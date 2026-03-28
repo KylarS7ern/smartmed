@@ -1,0 +1,6 @@
+[project]
+name = "smartmed"
+version = "0.1.0"
+description = "SmartMedSpender Raspberry Pi GUI"
+requires-python = ">=3.13"
+dependencies = []
