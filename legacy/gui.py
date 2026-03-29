@@ -1,6 +1,8 @@
 from smartmed.config import DATA_FILE
 from smartmed.services.storage_service import load_json_data, save_json_data
 from smartmed.models.defaults import build_default_settings, build_default_user
+from smartmed.services.notification_service import send_alarm_notifications
+
 
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
@@ -14,11 +16,6 @@ from kivy.uix.scrollview import ScrollView
 from kivy.clock import Clock
 
 from datetime import datetime, timedelta
-
-from email.message import EmailMessage
-
-import smtplib
-import requests
 
 TELEGRAM_BOT_TOKEN =  ''
 
@@ -2277,24 +2274,18 @@ class SmartMedGUI(App):
 
     def sende_alarm_benachrichtigungen(self, eintrag):
         """Je nach Einstellung: E-Mail / Telegram / beides / nichts senden."""
-        tag = eintrag.get('tag', '')
-        zeit = eintrag.get('zeit', '')
-        fach = eintrag.get('fach', '')
-        med = eintrag.get('medikament', '')
-        anzahl = eintrag.get('anzahl', 1)
-
-        text = (
-            'Alarm: Einnahme NICHT bestätigt:\n'
-            f"{tag} {zeit} | Fach {fach} | {med} (x{anzahl})"
+        send_alarm_notifications(
+            eintrag=eintrag,
+            notify_mode=self.settings.get('notify_mode', 'none'),
+            email_to=self.settings.get('email_to', '').strip(),
+            telegram_chat_id=self.settings.get('telegram_chat_id', '').strip(),
+            telegram_bot_token=TELEGRAM_BOT_TOKEN,
+            email_smtp_server=EMAIL_SMTP_SERVER,
+            email_smtp_port=EMAIL_SMTP_PORT,
+            email_username=EMAIL_USERNAME,
+            email_password=EMAIL_PASSWORT,
+            log_callback=self.log_event,
         )
-
-        notify_mode = self.settings.get('notify_mode', 'none')
-
-        if notify_mode in('email', 'both'):
-            self.sende_email_alarm('SmartMedSpender-Alarm', text)
-
-        if notify_mode in ('telegram', 'both'):
-            self.sende_telegram_alarm(text)
 
     def build(self):
         sm = ScreenManager()
