@@ -1,5 +1,6 @@
 from smartmed.config import DATA_FILE
 from smartmed.services.storage_service import load_json_data, save_json_data
+from smartmed.models.defaults import build_default_settings, build_default_user
 
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
@@ -226,24 +227,13 @@ class UserLoginScreen(Screen):
                 lbl_name.text = 'Benutzername existiert bereits. Bitte anderen Namen wählen:'
                 return
             
-            app.users[username] = {
-                'password': password,
-                'patient_name': username,
-                'patient_geburt': '-',
-                'patient_address': '',
-                'doctor_name': '',
-                'doctor_email': '',
-                'doctor_phone': '',
-                'contact1_name': '',
-                'contact1_email': '',
-                'contact1_phone': '',
-                'contact2_name': '',
-                'contact2_email': '',
-                'contact2_phone': '',
-                'settings': dict(app.settings),
-                'plan_eintraege': [],
-                'log_eintraege': [],
-            }
+            app.users[username] = build_default_user(
+                username=username,
+                password=password,
+                patient_name=username,
+                patient_geburt='-',
+                settings=app.settings,
+            )
 
             popup.dismiss()
             app.switch_user(username)
@@ -1853,14 +1843,7 @@ class SmartMedGUI(App):
 
         self.admin_pin = ''
 
-        self.settings = {
-            'alarm_delay_min': 30,
-            'alarm_mode': 'popup',
-            'notify_mode': 'none',
-            'email_to': '',
-            'telegram_chat_id': '',
-            'email_recipient': 'manual',
-        }
+        self.settings  = build_default_settings()
 
         self.users = {}
         self.current_user = None
@@ -1945,27 +1928,28 @@ class SmartMedGUI(App):
             self.users = data.get('users', {})
             self.current_user = data.get('current_user')
         else:
-            default_user = {
-                'password': '',
-                'patient_name': data.get('patient_name', self.patient_name),
-                'patient_geburt': data.get('patient_geburt', self.patient_geburt),
-                'settings': data.get('settings', dict(self.settings)),
-                'plan_eintraege': data.get('plan_eintraege', []),
-                'log_eintraege': data.get('log_eintraege', []),
-            }
+            default_user = build_default_user(
+                username='Standard',
+                password='',
+                patient_name=data.get('patient_name', self.patient_name),
+                patient_geburt=data.get('patient_geburt', self.patient_geburt),
+                settings=data.get('settings', self.settings),
+            )
+            default_user['plan_eintraege'] = data.get('plan_eintraege', [])
+            default_user['log_eintraege'] = data.get('log_eintraege', [])
+
             self.users = {'Standard': default_user}
             self.current_user = 'Standard'
 
         if not self.users:
             self.users = {
-                'Standard': {
-                    'password': '',
-                    'patient_name': self.patient_name,
-                    'patient_geburt': self.patient_geburt,
-                    'settings': dict(self.settings),
-                    'plan_eintraege': [],
-                    'log_eintraege': [],
-                }
+                'Standard': build_default_user(
+                    username='Standard',
+                    password='',
+                    paatient_name=self.patient_name,
+                    patient_geburt=self.patient_geburt,
+                    settings=self.settings,
+                )
             }
             self.current_user = 'Standard'
 
