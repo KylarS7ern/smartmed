@@ -2225,53 +2225,6 @@ class SmartMedGUI(App):
                 if self.settings.get('alarm_mode', 'popup') == 'popup':
                     self._zeige_alarm_popup(eintrag)
 
-    def sende_telegram_alarm(self, text):
-        """Alarm-text per telegram senden (falls konfiguriert)."""
-        chat_id = self.settings.get('telegram_chat_id', '').strip()
-        if not TELEGRAM_BOT_TOKEN or not chat_id:
-            print('Telegram nicht konfiguriert ( Token oder Chat-ID fehlt).')
-            return
-        
-        try:
-            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-            resp = requests.post(url, data={'chat_id': chat_id, 'text': text})
-            if resp.status_code == 200:
-                print("Telegram-Alarm gesende.")
-                self.log_event('Telegram-Alarm gesendet.')
-            else:
-                print('Fehler beim Telegram-Request:', resp.text)
-                self.log_event(f"Fehler beim Telegram-Request: {resp.text}")
-        except Exception as e:
-            print("Fehler beim Sendern von Telegram:", e)
-            self.log_event(f"Fehler beim Senden vin Telegram: {e}")
-
-    def sende_email_alarm(self, subject, body):
-        """Alarm-Mail senden (falls konfiguriert)."""
-        to_addr = self.settings.get('email_to', '').strip()
-        if not EMAIL_USERNAME or not EMAIL_PASSWORT:
-            print('Email nicht konfigurier (Username/Passwort fehlt im Code).')
-            return
-        if not to_addr:
-            print('Keine Empfänger-Adresse (email_to) in den Einstellungen.')
-            return
-        
-        msg= EmailMessage()
-        msg['From'] = EMAIL_USERNAME
-        msg['To'] = to_addr
-        msg['Subject'] = subject
-        msg.set_content(body)
-
-        try:
-            with smtplib.SMTP(EMAIL_SMTP_SERVER,EMAIL_SMTP_PORT) as smtp:
-                smtp.starttls()
-                smtp.login(EMAIL_USERNAME, EMAIL_PASSWORT)
-                smtp.send_message(msg)
-            print('Alarm-E_mail gesehndet.')
-            self.log_event(f"E-Mail_Alarm an {to_addr} gesendet.")
-        except Exception as e:
-            print('Fehler beim Senden der E-Mail:', e)
-            self.log_event(f"Fehler beim Senden der E-Mail: {e}")
-
     def sende_alarm_benachrichtigungen(self, eintrag):
         """Je nach Einstellung: E-Mail / Telegram / beides / nichts senden."""
         send_alarm_notifications(
