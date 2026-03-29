@@ -10,6 +10,7 @@ from smartmed.ui.screens.plan_list_screen import PlanListScreen
 from smartmed.ui.screens.user_login_screen import UserLoginScreen
 from smartmed.ui.screens.start_screen import StartScreen
 from smartmed.ui.screens.patient_settings_screen import PatientSettingsScreen
+from smartmed.ui.screens.advanced_settings_screen import AdvancedSettingsScreen
 
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
