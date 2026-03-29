@@ -13,6 +13,8 @@ from smartmed.ui.screens.patient_settings_screen import PatientSettingsScreen
 from smartmed.ui.screens.advanced_settings_screen import AdvancedSettingsScreen
 from smartmed.ui.screens.settings_screen import SettingsScreen
 from smartmed.ui.screens.plan_edit_screen import PlanEintragErfassenScreen
+from smartmed.ui.screen_factory import build_screen_manager
+
 
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
@@ -460,26 +462,11 @@ class SmartMedGUI(App):
         )
 
     def build(self):
-        sm = ScreenManager()
-
-        sm.add_widget(UserLoginScreen(name='login'))
-        sm.add_widget(StartScreen(name='start'))
-        sm.add_widget(MainMenuScreen(name='menu'))
-        sm.add_widget(StatusScreen(name='status'))
-        sm.add_widget(PlanListScreen(name='plan_list'))
-        sm.add_widget(LogScreen(name='log'))
-        sm.add_widget(PlanEintragErfassenScreen(name='plan_edit'))
-        
-        sm.add_widget(SettingsMenuScreen(name='settings_menu'))
-        sm.add_widget(PatientSettingsScreen(name='settings_patient'))
-        sm.add_widget(SettingsScreen(name='settings'))
-        sm.add_widget(AdvancedSettingsScreen(name='settings_advanced'))
-
-        sm.current = 'login'
+        sm = build_screen_manager()
 
         Clock.schedule_interval(self._auto_pruefen_einnahme, 10.0)
         Clock.schedule_interval(self._check_overdue_einnahme, 60.0)
-    
+
         return sm
     
 if __name__ == '__main__':
