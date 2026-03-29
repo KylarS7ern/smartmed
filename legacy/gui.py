@@ -1,8 +1,5 @@
-from kivy.config import Config
-
-Config.set('graphics', 'width', '480')
-Config.set('graphics', 'height', '800')
-Config.set('graphics', 'resizable', '0')
+from smartmed.config import DATA_FILE
+from smartmed.services.storage_service import load_json_data, save_json_data
 
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
@@ -20,9 +17,6 @@ from datetime import datetime, timedelta
 from email.message import EmailMessage
 
 import smtplib
-import json
-import os
-import smtplib
 import requests
 
 TELEGRAM_BOT_TOKEN =  ''
@@ -31,10 +25,6 @@ EMAIL_SMTP_SERVER = 'smtp.gmail.com'
 EMAIL_SMTP_PORT = 587
 EMAIL_USERNAME = 'smartmedispender@gmail.com'
 EMAIL_PASSWORT = ''
-
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(BASE_DIR, 'smartmed_plan.json')
 
 
 class StartScreen(Screen):
@@ -1942,15 +1932,9 @@ class SmartMedGUI(App):
  
     def load_data(self):
         """Gespeicherte Daten (Users + golbale Fächer) aus JSON laden"""
-        data = {}
-        try:
-            with open(DATA_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+        data = load_json_data(DATA_FILE)
+        if data:
             print(f"Daten aus '{DATA_FILE}' geladen.")
-        except FileNotFoundError:
-            print("Noch keine gespeicherten Daten vorhanden, starte leer.")
-        except Exception as e:
-            print("Fehler beim Laden der Daten:?", e)
 
         self.fach_medikamente = data.get('fach_medikamente', {})
 
@@ -2002,12 +1986,7 @@ class SmartMedGUI(App):
             'admin_pin': self.admin_pin,         
         }
         
-        try:
-            with open(DATA_FILE, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-                print(f"Daten in '{DATA_FILE}' gespeichert.")
-        except Exception as e:
-            print("Fehler beim speichern der Daten:", e)
+        save_json_data(DATA_FILE, data)
 
     def log_event(self, text: str):
         """Einen Log-Eintrag zur Liste inzufügen (ohne sofort zu speichern)."""
