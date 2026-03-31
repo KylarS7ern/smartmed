@@ -130,6 +130,37 @@ def finde_ueberfaellige_offene_einnahmen(offene_einnahmen, jetzt=None):
 
     return ueberfaellige, jetzt
 
+
+def markiere_ueberfaellige_offene_einnahmen(ueberfaellige):
+    """Markiert überfällige offene Einnahmen als alarmiert und bereitet Ausgabetexte vor."""
+    verarbeitete = []
+
+    for off in ueberfaellige:
+        eintrag = off.get('eintrag', {})
+
+        fach = eintrag.get('fach', '')
+        med = eintrag.get('medikament', '')
+        anzahl = eintrag.get('anzahl', 1)
+        tag = eintrag.get('tag', '')
+        zeit = eintrag.get('zeit', '')
+
+        off['alarm_verschickt'] = True
+
+        verarbeitete.append({
+            'eintrag': eintrag,
+            'console_text': (
+                f"[ALARM] Einnahme NICHT bestätigt: "
+                f"{tag} {zeit} | Fach {fach} | {med} (x{anzahl})"
+            ),
+            'log_text': (
+                f"ALARM: Einnahme NICHT bestätigt: "
+                f"{tag} {zeit} | Fach {fach} | {med} (x{anzahl})"
+            ),
+        })
+
+    return verarbeitete
+
+
 def bestaetige_offene_einnahmen(due, offene_einnahmen, zeitpunkt):
     """Markiert passende offene Einnahmen als bestätigt und gibt Log-Texte zurück."""
     ts = zeitpunkt.strftime('%Y-%m-%d %H:%M')
@@ -154,4 +185,3 @@ def bestaetige_offene_einnahmen(due, offene_einnahmen, zeitpunkt):
 
     return log_texte
 
-    

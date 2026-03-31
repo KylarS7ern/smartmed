@@ -22,6 +22,7 @@ from smartmed.services.schedule_service import (
     erstelle_offene_einnahmen,
     finde_faellige_einnahmen,
     finde_ueberfaellige_offene_einnahmen,
+    markiere_ueberfaellige_offene_einnahmen,
 )
 
 
@@ -352,39 +353,27 @@ class SmartMedGUI(App):
         if not self.offene_einnahmen:
             return
 
-        ueberfaellige, jetzt = finde_ueberfaellige_offene_einnahmen(
+        ueberfaellige, _ = finde_ueberfaellige_offene_einnahmen(
             self.offene_einnahmen
         )
 
         if not ueberfaellige:
             return
 
-        for off in ueberfaellige:
-            eintrag = off.get('eintrag', {})
+        verarbeitete = markiere_ueberfaellige_offene_einnahmen(ueberfaellige)
 
-            fach = eintrag.get('fach', '')
-            med = eintrag.get('medikament', '')
-            anzahl = eintrag.get('anzahl', 1)
-            tag = eintrag.get('tag', '')
-            zeit = eintrag.get('zeit', '')
+        for item in verarbeitete:
+            eintrag = item['eintrag']
 
-            print(
-                f"[ALARM] Einnahme NICHT bestätigt: {tag} {zeit} | Fach {fach} | {med} (x{anzahl})"
-            )
-
-            off['alarm_verschickt'] = True
-
-            self.log_event(
-                f"ALARM: Einnahme NICHT bestätigt: {tag} {zeit} | Fach {fach} | {med} (x{anzahl})"
-            )
-
+            print(item['console_text'])
+            self.log_event(item['log_text'])
             self.save_data()
 
             self.sende_alarm_benachrichtigungen(eintrag)
 
             if self.settings.get('alarm_mode', 'popup') == 'popup':
                 self._zeige_alarm_popup(eintrag)
-    
+        
     def sende_alarm_benachrichtigungen(self, eintrag):
         """Je nach Einstellung: E-Mail / Telegram / beides / nichts senden."""
         send_alarm_notifications(
