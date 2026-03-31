@@ -47,3 +47,63 @@ def berechne_naechste_einnahme(plan_eintraege, jetzt=None):
                 bester_eintrag = eintrag
 
     return bester_eintrag, beste_dt
+
+def finde_faellige_einnahmen(plan_eintraege, jetzt=None):
+    """Gibt (due, jetzt, minute_key, tag_kurz, zeit_str) für aktuell fällige Einnahmen zurück."""
+    if jetzt is None:
+        jetzt = datetime.now()
+
+    jetzt = jetzt.replace(second=0, microsecond=0)
+    minute_key = jetzt.strftime('%Y-%m-%d %H:%M')
+    tag_kurz = WOCHENTAGE[jetzt.weekday()]
+    zeit_str = jetzt.strftime('%H:%M')
+
+    due = [
+        eintrag for eintrag in plan_eintraege
+        if eintrag.get('tag') == tag_kurz and eintrag.get('zeit') == zeit_str
+    ]
+
+    return due, jetzt, minute_key, tag_kurz, zeit_str
+
+
+def berechne_alarm_delay_minuten(delay_wert, standard=30):
+    """Liest die Alarm-Verzögerung robust aus den Settings."""
+    try:
+        delay_min = int(delay_wert)
+        if delay_min <= 0:
+            return standard
+        return delay_min
+    except (TypeError, ValueError):
+        return standard
+
+
+def erstelle_offene_einnahmen(due, offene_einnahmen, jetzt, delay_min, tag_kurz=None, zeit_str=None):
+    """Erzeugt neue offene Einnahmen für aktuell fällige Einträge."""
+    deadline = jetzt + timedelta(minutes=delay_min)
+    neue_offene = []
+
+    for eintrag in due:
+        tag = eintrag.get('tag', tag_kurz or '')
+        zeit = eintrag.get('zeit', zeit_str or '')
+        fach = eintrag.get('fach', '')
+        med = eintrag.get('medikament', '')
+
+        key = (tag, zeit, fach, med)
+
+        schon_drin = any(
+            (off.get('key') == key) and (not off.get('bestaetigt'))
+            for off in (offene_einnahmen + neue_offene)
+        )
+        if schon_drin:
+            continue
+
+        neue_offene.append({
+            'key': key,
+            'eintrag': eintrag,
+            'faellige_zeit': jetzt,
+            'deadline': deadline,
+            'bestaetigt': False,
+            'alarm_verschickt': False,
+        })
+
+    return neue_offene
