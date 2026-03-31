@@ -1,0 +1,1 @@
+# UI-Paket der SmartMed-Anwendung.

@@ -1,0 +1,1 @@
+# Screen-Klassen der SmartMed-Anwendung.

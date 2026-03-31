@@ -1,0 +1,32 @@
+{
+  "fach_medikamente": {},
+  "users": {
+    "Standard": {
+      "password": "",
+      "patient_name": "Demo-Patient",
+      "patient_geburt": "01.01.2000",
+      "settings": {
+        "alarm_delay_min": 30,
+        "alarm_mode": "popup",
+        "notify_mode": "none",
+        "email_to": "",
+        "telegram_chat_id": "",
+        "email_recipient": "manual"
+      },
+      "plan_eintraege": [],
+      "log_eintraege": [],
+      "patient_address": "",
+      "doctor_name": "",
+      "doctor_email": "",
+      "doctor_phone": "",
+      "contact1_name": "",
+      "contact1_email": "",
+      "contact1_phone": "",
+      "contact2_name": "",
+      "contact2_email": "",
+      "contact2_phone": ""
+    }
+  },
+  "current_user": "Standard",
+  "admin_pin": ""
+}
