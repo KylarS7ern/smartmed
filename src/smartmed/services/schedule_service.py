@@ -48,6 +48,7 @@ def berechne_naechste_einnahme(plan_eintraege, jetzt=None):
 
     return bester_eintrag, beste_dt
 
+
 def finde_faellige_einnahmen(plan_eintraege, jetzt=None):
     """Gibt (due, jetzt, minute_key, tag_kurz, zeit_str) für aktuell fällige Einnahmen zurück."""
     if jetzt is None:
@@ -107,3 +108,24 @@ def erstelle_offene_einnahmen(due, offene_einnahmen, jetzt, delay_min, tag_kurz=
         })
 
     return neue_offene
+
+
+def finde_ueberfaellige_offene_einnahmen(offene_einnahmen, jetzt=None):
+    """Gibt (ueberfaellige, jetzt) für offene überfällige Einnahmen zurück."""
+    if jetzt is None:
+        jetzt = datetime.now()
+
+    ueberfaellige = []
+
+    for offene_einnahme in offene_einnahmen:
+        if offene_einnahme.get('bestaetigt'):
+            continue
+
+        if offene_einnahme.get('alarm_verschickt'):
+            continue
+
+        deadline = offene_einnahme.get('deadline')
+        if deadline and jetzt > deadline:
+            ueberfaellige.append(offene_einnahme)
+
+    return ueberfaellige, jetzt
