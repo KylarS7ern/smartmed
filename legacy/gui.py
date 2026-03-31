@@ -15,6 +15,16 @@ from smartmed.ui.screens.settings_screen import SettingsScreen
 from smartmed.ui.screens.plan_edit_screen import PlanEintragErfassenScreen
 from smartmed.ui.screen_factory import build_screen_manager
 
+from smartmed.services.schedule_service import (
+    berechne_alarm_delay_minuten,
+    berechne_naechste_einnahme,
+    bestaetige_offene_einnahmen,
+    erstelle_offene_einnahmen,
+    finde_faellige_einnahmen,
+    finde_ueberfaellige_offene_einnahmen,
+)
+
+
 
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
@@ -200,61 +210,19 @@ class SmartMedGUI(App):
 
     def naechste_einnahme(self):
         """Gibt (eintrag, datetime) für die nächste geplante Einnahme zurück."""
-        if not self.plan_eintraege:
-            return None, None
-        
-        jetzt = datetime.now()
-        wochentage = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
-        heute_index = jetzt.weekday()
-
-        beste_dt = None
-        bester_eintrag = None
-
-        for offset in range(0, 7):
-            tag_index = (heute_index + offset) % 7
-            tag_kurz = wochentage[tag_index]
-            datum = jetzt.date() + timedelta(days=offset)
-
-            for e in self.plan_eintraege:
-                if e.get('tag') != tag_kurz:
-                    continue
-
-                zeit_str = e.get('zeit', '00:00')
-                try:
-                    stunde, minute = map(int, zeit_str.split(':'))
-                except ValueError:
-                    continue
-
-                dt = datetime(datum.year, datum.month, datum.day, stunde, minute)
-
-                if dt <= jetzt:
-                    continue
-
-                if beste_dt is None or dt < beste_dt:
-                    beste_dt = dt
-                    bester_eintrag = e
-
-        return bester_eintrag, beste_dt
+        return berechne_naechste_einnahme(self.plan_eintraege)
 
     def bestaetige_einnahmen(self, due, zeitpunkt):
-        """Vom Benutzer bestätigte Einnahmen verarbeiten (loggen, Stepper, ect.)."""
-        ts = zeitpunkt.strftime('%Y-%m-%d %H:%M')
+        """Vom Benutzer bestätigte Einnahmen verarbeiten."""
+        log_texte = bestaetige_offene_einnahmen(
+            due=due,
+            offene_einnahmen=self.offene_einnahmen,
+            zeitpunkt=zeitpunkt,
+        )
 
-        for e in due:
-            tag = e.get('tag', '')
-            zeit = e.get('zeit', '')
-            fach = e.get('fach', '')
-            med = e.get('medikament', '')
-            anzahl = e.get('anzahl', 1)
+        for text in log_texte:
+            self.log_event(text)
 
-            key = (tag, zeit, fach, med)
-            for off in self.offene_einnahmen:
-                if off.get('key') == key and not off.get('bestaetigt'):
-                    off['bestaetigt'] = True
-
-            self.log_event(
-                f"Einnahme bestätigt ({ts}): {tag} {zeit} | Fach {fach} | {med} (x{anzahl})")
-            
         self.save_data()
 
     def _zeige_einnahme_popup(self, due, jetzt):
@@ -347,105 +315,76 @@ class SmartMedGUI(App):
         popup.open()
 
     def _auto_pruefen_einnahme(self, dt):
-        """Wird regelmässig von Kyvi aufgerufen, prüft ob JETZT Einnahmen fällig sind."""
+        """Wird regelmässig von Kivy aufgerufen, prüft ob JETZT Einnahmen fällig sind."""
         if not self.plan_eintraege:
             return
-        
-        jetzt = datetime.now().replace(second=0, microsecond=0)
-        minute_key = jetzt.strftime ('%Y-%m-%d %H:%M')
+
+        due, jetzt, minute_key, tag_kurz, zeit_str = finde_faellige_einnahmen(
+            self.plan_eintraege
+        )
 
         if getattr(self, '_last_popup_minute', None) == minute_key:
             return
-        
-        wochentage = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
-        tag_kurz = wochentage[jetzt.weekday()]
-        zeit_str = jetzt.strftime('%H:%M')
-
-        due = [
-            e for e in self.plan_eintraege
-            if e.get('tag') == tag_kurz and e.get('zeit') == zeit_str
-        ]        
 
         if not due:
             return
-        
+
         self._last_popup_minute = minute_key
 
-        delay_min = self.settings.get('alarm_delay_min', 30)
-        try:
-            delay_min = int(delay_min)
-            if delay_min <= 0:
-                delay_min = 30
-        except (TypeError, ValueError):
-            delay_min = 30
+        delay_min = berechne_alarm_delay_minuten(
+            self.settings.get('alarm_delay_min', 30)
+        )
 
-        deadline = jetzt + timedelta(minutes=delay_min)
-
-        for e in due:
-            tag = e.get('tag', tag_kurz)
-            zeit = e.get('zeit', zeit_str)
-            fach = e.get('fach', '')
-            med = e.get('medikament', '')
-
-            key = (tag, zeit, fach, med)
-
-            schon_drin = any(
-                (off.get('key') == key) and (not off.get('bestaetigt'))
-                for off in self.offene_einnahmen
-            )
-            if schon_drin:
-                continue
-
-            self.offene_einnahmen.append({
-                'key': key,
-                'eintrag': e,
-                'faellige_zeit': jetzt,
-                'deadline': deadline,
-                'bestaetigt': False,
-                'alarm_verschickt': False
-            })
+        neue_offene = erstelle_offene_einnahmen(
+            due=due,
+            offene_einnahmen=self.offene_einnahmen,
+            jetzt=jetzt,
+            delay_min=delay_min,
+            tag_kurz=tag_kurz,
+            zeit_str=zeit_str,
+        )
+        self.offene_einnahmen.extend(neue_offene)
 
         self._zeige_einnahme_popup(due, jetzt)
-
+    
     def _check_overdue_einnahme(self, dt):
         """Überprüft offene Einnahmen, ob sie überfällig sind, und löst ggf. Alarm aus."""
         if not self.offene_einnahmen:
             return
-        
-        jetzt = datetime.now()
-        for off in self.offene_einnahmen:
-            if off.get('bestaetigt'):
-                continue
-            if off.get('alarm_verschickt'):
-                continue
 
-            deadline = off.get('deadline')
+        ueberfaellige, jetzt = finde_ueberfaellige_offene_einnahmen(
+            self.offene_einnahmen
+        )
+
+        if not ueberfaellige:
+            return
+
+        for off in ueberfaellige:
             eintrag = off.get('eintrag', {})
 
-            if deadline and jetzt > deadline:
-                fach = eintrag.get('fach', '')
-                med = eintrag.get('medikament', '')
-                anzahl = eintrag.get('anzahl', 1)
-                tag = eintrag.get('tag', '')
-                zeit = eintrag.get('zeit', '')
+            fach = eintrag.get('fach', '')
+            med = eintrag.get('medikament', '')
+            anzahl = eintrag.get('anzahl', 1)
+            tag = eintrag.get('tag', '')
+            zeit = eintrag.get('zeit', '')
 
-                print(
-                    f"[ALARM] Einnahme NICHT bestätigt: {tag} {zeit} | Fach {fach} | {med} (x{anzahl})"
-                )
+            print(
+                f"[ALARM] Einnahme NICHT bestätigt: {tag} {zeit} | Fach {fach} | {med} (x{anzahl})"
+            )
 
-                off['alarm_verschickt'] = True
+            off['alarm_verschickt'] = True
 
-                self.log_event(
-                    f"ALARM: Einnahme NICHT bestätigt: {tag} {zeit} | Fach {fach} | {med} (x{anzahl})"
-                    )
-        
-                self.save_data()
+            self.log_event(
+                f"ALARM: Einnahme NICHT bestätigt: {tag} {zeit} | Fach {fach} | {med} (x{anzahl})"
+            )
 
-                self.sende_alarm_benachrichtigungen(eintrag)
+            self.save_data()
 
-                if self.settings.get('alarm_mode', 'popup') == 'popup':
-                    self._zeige_alarm_popup(eintrag)
+            self.sende_alarm_benachrichtigungen(eintrag)
 
+            if self.settings.get('alarm_mode', 'popup') == 'popup':
+                self._zeige_alarm_popup(eintrag)
+    
     def sende_alarm_benachrichtigungen(self, eintrag):
         """Je nach Einstellung: E-Mail / Telegram / beides / nichts senden."""
         send_alarm_notifications(

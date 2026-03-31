@@ -129,3 +129,29 @@ def finde_ueberfaellige_offene_einnahmen(offene_einnahmen, jetzt=None):
             ueberfaellige.append(offene_einnahme)
 
     return ueberfaellige, jetzt
+
+def bestaetige_offene_einnahmen(due, offene_einnahmen, zeitpunkt):
+    """Markiert passende offene Einnahmen als bestätigt und gibt Log-Texte zurück."""
+    ts = zeitpunkt.strftime('%Y-%m-%d %H:%M')
+    log_texte = []
+
+    for eintrag in due:
+        tag = eintrag.get('tag', '')
+        zeit = eintrag.get('zeit', '')
+        fach = eintrag.get('fach', '')
+        med = eintrag.get('medikament', '')
+        anzahl = eintrag.get('anzahl', 1)
+
+        key = (tag, zeit, fach, med)
+
+        for offene_einnahme in offene_einnahmen:
+            if offene_einnahme.get('key') == key and not offene_einnahme.get('bestaetigt'):
+                offene_einnahme['bestaetigt'] = True
+
+        log_texte.append(
+            f"Einnahme bestätigt ({ts}): {tag} {zeit} | Fach {fach} | {med} (x{anzahl})"
+        )
+
+    return log_texte
+
+    
