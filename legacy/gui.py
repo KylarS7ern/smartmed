@@ -1,5 +1,6 @@
 from smartmed.config import DATA_FILE
 from smartmed.services.storage_service import load_json_data, save_json_data
+from smartmed.services.user_state_service import load_user_into_app, store_current_user_state
 from smartmed.models.defaults import build_default_settings, build_default_user
 from smartmed.services.notification_service import send_alarm_notifications
 from smartmed.ui.screens.status_screen import StatusScreen
@@ -79,66 +80,16 @@ class SmartMedGUI(App):
         
         self.load_data()
 
-    def _load_user_into_state(self, username):
-        """Daten eines Benutzers in die App-Attribute laden"""
-        user = self.users.get(username, {})
-
-        self.patient_name = user.get('patient_name', 'Demo-Patient')
-        self.patient_geburt = user.get('patient_geburt', '01.01.2000')
-
-        self.patient_address = user.get('patient_address', user.get('patient_adress', ''))
-        self.doctor_name = user.get('doctor_name', '')
-        self.doctor_email = user.get('doctor_email', '')
-        self.doctor_phone = user.get('doctor_phone', '')
-        self.contact1_name = user.get('contact1_name', '')
-        self.contact1_email = user.get('contact1_email', '')
-        self.contact1_phone = user.get('contact1_phone', '')
-        self.contact2_name = user.get('contact2_name', '')
-        self.contact2_email = user.get('contact2_email', '')
-        self.contact2_phone = user.get('contact2_phone', '')
-
-        self.settings.update(user.get('settings', {}))
-
-        self.plan_eintraege = user.get('plan_eintraege', [])
-        self.log_eintraege = user.get('log_eintraege', [])
-
-    def _store_current_user_state(self):
-        """Aktuelle App-Attribute zurück in das Benutzer-Objekt schreiben."""
-        if self.current_user is None:
-            return
-        
-        user = self.users.setdefault(self.current_user, {})
-
-        user.setdefault('password', '')
-
-        user['patient_name'] = self.patient_name
-        user['patient_geburt'] = self.patient_geburt
-
-        user['patient_address'] = self.patient_address
-        user['doctor_name'] = self.doctor_name
-        user['doctor_email'] = self.doctor_email
-        user['doctor_phone'] = self.doctor_phone
-        user['contact1_name'] = self.contact1_name
-        user['contact1_email'] = self.contact1_email
-        user['contact1_phone'] = self.contact1_phone
-        user['contact2_name'] = self.contact2_name
-        user['contact2_email'] = self.contact2_email
-        user['contact2_phone'] = self.contact2_phone
-
-        user['settings'] = self.settings.copy()
-        user['plan_eintraege'] = self.plan_eintraege
-        user['log_eintraege'] = self.log_eintraege
-
     def switch_user(self, username):
         """Benutzer wechseln undustand laden/speichern."""
         if username not in self.users:
             print(f'Unbekannter Benutzer: {username}')
             return
         
-        self._store_current_user_state()
+        store_current_user_state(self)
 
         self.current_user = username
-        self._load_user_into_state(username)
+        load_user_into_app(self, username)
         self.save_data()    
         print(f'Benutzer gewechselt zu: {username}')
  
@@ -185,12 +136,12 @@ class SmartMedGUI(App):
         if not self.current_user or self.current_user not in self.users:
             self.current_user = sorted(self.users.keys())[0]
 
-        self._load_user_into_state(self.current_user)
+        load_user_into_app(self, self.current_user)
         print(f'Aktueller Benutzer: {self.current_user}')
     
     def save_data(self):
         """Alle Daten (Users " globale Fächer) in JSON speichern."""
-        self._store_current_user_state()
+        store_current_user_state(self)
 
         data = {
             'fach_medikamente': self.fach_medikamente,
