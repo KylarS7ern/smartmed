@@ -369,15 +369,15 @@ class SmartMedGUI(App):
         
     def _verarbeite_ueberfaellige_einnahmen(self, verarbeitete):
         """Führt die Seiteneffekte für bereits fachlich verarbeitete Alarme aus."""
+        if not verarbeitete:
+            return
+
         for item in verarbeitete:
-            eintrag = item['eintrag']
-
-            print(item['console_text'])
-            self.log_event(item['log_text'])
-            self.sende_alarm_benachrichtigungen(eintrag)
-
-            if self.settings.get('alarm_mode', 'popup') == 'popup':
-                self._zeige_alarm_popup(eintrag)
+            self._loese_nicht_bestaetigt_alarm_aus(
+                eintrag=item['eintrag'],
+                console_text=item['console_text'],
+                log_text=item['log_text'],
+            )
 
         self.save_data()
         
@@ -395,6 +395,15 @@ class SmartMedGUI(App):
             email_password=EMAIL_PASSWORT,
             log_callback=self.log_event,
         )
+
+    def _loese_nicht_bestaetigt_alarm_aus(self, eintrag, console_text, log_text):
+        """Führt alle Seiteneffekte für einen Alarm wegen nicht bestätigter Einnahme aus."""
+        print(console_text)
+        self.log_event(log_text)
+        self.sende_alarm_benachrichtigungen(eintrag)
+
+        if self.settings.get('alarm_mode', 'popup') == 'popup':
+            self._zeige_alarm_popup(eintrag)
 
     def build(self):
         sm = build_screen_manager()
