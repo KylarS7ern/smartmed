@@ -24,3 +24,6 @@ Config.set("graphics", "fullscreen", "1")
 Config.set("graphics", "borderless", "1")
 
 Config.set("input", "mouse", "mouse,disable_on_activity")
+
+Config.set("kivy", "keyboard_mode", "dock")
+Config.set("kivy", "keyboard_layout", "qwertz")
