@@ -1,16 +1,104 @@
-# SmartMed
+# SmartMediSpender
 
-Finalsoftware furr das Diplomarbeits-Projekt SmartMedSpender.
+SmartMediSpender ist die Raspberry-Pi-Software für meinen Diplomarbeits-Prototypen zur automatischen Medikamentenausgabe.
 
-## Ziel
-Eine wartbare, saubere und professionell strukturierte Raspberry-Pi-Anwendung mit Touch-GUI, Benutzerverwaltung, Einnahmeplan, Logging, Alarmierung und spaeter Arduino-Anbindung.
+Die Anwendung läuft auf einem Raspberry Pi mit Touchscreen und wurde mit Python und Kivy umgesetzt.
+Aktuell wird die bestehende funktionale App nicht neu gestartet, sondern schrittweise professionell refaktoriert.
 
-## Entwicklungsumgebung
+## Projektziel
+
+Ziel ist eine saubere, wartbare und erweiterbare Finalsoftware für einen Medikamentenspender mit:
+
+- Touch-Bedienung direkt am Gerät
+- Benutzerverwaltung
+- Einnahmeplan
+- Ereignis- und Einnahmelogs
+- Alarm- und Benachrichtigungslogik
+- späterer Anbindung an Arduino / Hardware
+
+## Aktueller Architekturstand
+
+Das Projekt befindet sich in einem inkrementellen Refactoring.
+
+- Die neue Projektstruktur liegt unter `src/smartmed/`
+- Die App wird über `python -m smartmed.main` gestartet
+- Teile der Logik wurden bereits aus dem alten Monolithen ausgelagert
+- Der Legacy-Kern existiert noch in `legacy/gui.py`
+- Laufzeitdaten liegen in `data/smartmed_plan.json`
+
+Wichtig:
+Es handelt sich aktuell bewusst **nicht** um einen kompletten Neustart, sondern um eine schrittweise Weiterentwicklung der bestehenden funktionalen App.
+
+## Projektstruktur
+
+    smartmed/
+    ├─ data/
+    ├─ legacy/
+    ├─ scripts/
+    ├─ src/
+    │  └─ smartmed/
+    ├─ pyproject.toml
+    ├─ README.md
+
+## Voraussetzungen
+
 - Raspberry Pi
-- Python
-- Kivy
-- Visual Studio Code mit Remote-SSH
-- Git / GitHub
+- Python 3.13
+- virtuelle Umgebung `.venv`
+- Kivy 2.3.1
+- requests 2.33.0
 
-## Projektstatus
-Grundgeruest wird aufgebaut. Bestehender Prototyp wird schrittweise in eine saubere Architektur ueberfuehrt.
+## Projekt lokal auf dem Raspberry Pi starten
+
+### 1. Ins Projekt wechseln
+
+    cd ~/projects/smartmed
+
+### 2. Virtuelle Umgebung aktivieren
+
+    source .venv/bin/activate
+
+### 3. App starten
+
+Empfohlener Startweg:
+
+    ./scripts/run_pi.sh
+
+Alternativ direkt:
+
+    export PYTHONPATH=src
+    python -m smartmed.main
+
+## Datenablage
+
+Die aktive Datendatei ist:
+
+    data/smartmed_plan.json
+
+Diese Datei wird von der App beim Start geladen und beim Speichern aktualisiert.
+
+## Entwicklungsansatz
+
+Entwickelt wird aktuell direkt auf dem Raspberry Pi mit Visual Studio Code per Remote-SSH.
+
+Warum dieser Weg:
+
+- direktes Testen auf dem echten Touchscreen
+- echtes Verhalten von Kivy auf dem Zielgerät
+- spätere Hardware-Anbindung besser testbar
+- weniger Komplexität als Docker / Dev Container für diese Projektphase
+
+## Nächste technische Ziele
+
+- weitere Entkopplung von Legacy-Code
+- saubere Trennung von GUI, Logik, Daten und Hardware
+- Verbesserung von UI/UX und Bildschirmtastatur
+- strukturierte Arduino-Kommunikation
+- Raspberry-Pi-Autostart
+- erste automatisierte Tests
+
+## Hinweise
+
+- `legacy/gui.py` ist noch Teil der funktionalen Basis
+- Refactoring erfolgt in kleinen, lauffähigen Schritten
+- `data/smartmed_plan.json` ist die aktuelle Quelle der Wahrheit für Laufzeitdaten
