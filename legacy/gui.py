@@ -1,6 +1,7 @@
 from smartmed.config import DATA_FILE
 from smartmed.services.storage_service import load_json_data, save_json_data
 from smartmed.services.user_state_service import load_user_into_app, store_current_user_state
+from smartmed.services.app_persistence_service import apply_loaded_data, build_data_to_save
 from smartmed.models.defaults import build_default_settings, build_default_user
 from smartmed.services.notification_service import send_alarm_notifications
 from smartmed.ui.screens.status_screen import StatusScreen
@@ -94,62 +95,19 @@ class SmartMedGUI(App):
         print(f'Benutzer gewechselt zu: {username}')
  
     def load_data(self):
-        """Gespeicherte Daten (Users + golbale Fächer) aus JSON laden"""
+        """Gespeicherte Daten (Users + globale Fächer) aus JSON laden"""
         data = load_json_data(DATA_FILE)
         if data:
             print(f"Daten aus '{DATA_FILE}' geladen.")
 
-        self.fach_medikamente = data.get('fach_medikamente', {})
-
-        self.admin_pin = data.get('admin_pin', '')
-
-        if 'users' in data:
-
-            self.users = data.get('users', {})
-            self.current_user = data.get('current_user')
-        else:
-            default_user = build_default_user(
-                username='Standard',
-                password='',
-                patient_name=data.get('patient_name', self.patient_name),
-                patient_geburt=data.get('patient_geburt', self.patient_geburt),
-                settings=data.get('settings', self.settings),
-            )
-            default_user['plan_eintraege'] = data.get('plan_eintraege', [])
-            default_user['log_eintraege'] = data.get('log_eintraege', [])
-
-            self.users = {'Standard': default_user}
-            self.current_user = 'Standard'
-
-        if not self.users:
-            self.users = {
-                'Standard': build_default_user(
-                    username='Standard',
-                    password='',
-                    paatient_name=self.patient_name,
-                    patient_geburt=self.patient_geburt,
-                    settings=self.settings,
-                )
-            }
-            self.current_user = 'Standard'
-
-        if not self.current_user or self.current_user not in self.users:
-            self.current_user = sorted(self.users.keys())[0]
-
+        apply_loaded_data(self, data)
         load_user_into_app(self, self.current_user)
         print(f'Aktueller Benutzer: {self.current_user}')
-    
-    def save_data(self):
-        """Alle Daten (Users " globale Fächer) in JSON speichern."""
-        store_current_user_state(self)
 
-        data = {
-            'fach_medikamente': self.fach_medikamente,
-            'users': self.users,
-            'current_user': self.current_user,
-            'admin_pin': self.admin_pin,         
-        }
-        
+    def save_data(self):
+        """Alle Daten (Users + globale Fächer) in JSON speichern."""
+        store_current_user_state(self)
+        data = build_data_to_save(self)
         save_json_data(DATA_FILE, data)
 
     def log_event(self, text: str):
