@@ -362,17 +362,24 @@ class SmartMedGUI(App):
 
         verarbeitete = markiere_ueberfaellige_offene_einnahmen(ueberfaellige)
 
+        if not verarbeitete:
+            return
+
+        self._verarbeite_ueberfaellige_einnahmen(verarbeitete)
+        
+    def _verarbeite_ueberfaellige_einnahmen(self, verarbeitete):
+        """Führt die Seiteneffekte für bereits fachlich verarbeitete Alarme aus."""
         for item in verarbeitete:
             eintrag = item['eintrag']
 
             print(item['console_text'])
             self.log_event(item['log_text'])
-            self.save_data()
-
             self.sende_alarm_benachrichtigungen(eintrag)
 
             if self.settings.get('alarm_mode', 'popup') == 'popup':
                 self._zeige_alarm_popup(eintrag)
+
+        self.save_data()
         
     def sende_alarm_benachrichtigungen(self, eintrag):
         """Je nach Einstellung: E-Mail / Telegram / beides / nichts senden."""
