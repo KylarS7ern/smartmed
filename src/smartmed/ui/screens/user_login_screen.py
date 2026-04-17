@@ -33,17 +33,63 @@ class UserLoginScreen(Screen):
         )
         scroll.add_widget(self.user_list_layout)
 
-        btn_new = Button(
-            text='Neuen Benutzer anlegen',
-            size_hint=(1, 0.15)
+        btn_row = BoxLayout(
+            orientation='horizontal',
+            size_hint=(1, 0.15),
+            spacing=10
         )
+
+        btn_new = Button(text='Neuen Benutzer anlegen')
+        btn_exit = Button(text='App beenden')
+
         btn_new.bind(on_press=self.neuen_benutzer)
+        btn_exit.bind(on_press=self.app_beenden_bestaetigen)
+
+        btn_row.add_widget(btn_new)
+        btn_row.add_widget(btn_exit)
 
         root.add_widget(titel)
         root.add_widget(scroll)
-        root.add_widget(btn_new)
+        root.add_widget(btn_row)
 
         self.add_widget(root)
+
+    def app_beenden_bestaetigen(self, instance):
+        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+
+        label = Label(
+            text='App wirklich beenden?',
+            halign='center',
+            valign='middle'
+        )
+        label.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
+
+        btn_layout = BoxLayout(
+            orientation='horizontal',
+            spacing=10,
+            size_hint=(1, 0.35)
+        )
+
+        btn_yes = Button(text='Ja')
+        btn_no = Button(text='Nein')
+
+        btn_layout.add_widget(btn_yes)
+        btn_layout.add_widget(btn_no)
+
+        layout.add_widget(label)
+        layout.add_widget(btn_layout)
+
+        popup = Popup(
+            title='Beenden',
+            content=layout,
+            size_hint=(0.7, 0.35),
+            auto_dismiss=False
+        )
+
+        btn_yes.bind(on_press=lambda *_: App.get_running_app().stop())
+        btn_no.bind(on_press=lambda *_: popup.dismiss())
+
+        popup.open()
 
     def on_pre_enter(self, *args):
         """Aktuelle Benutzerliste anzeigen, wenn Screen gezeigt wird."""
