@@ -13,7 +13,6 @@ from smartmed.services.alarm_workflow_service import (
     execute_alarm_action,
     )
 
-
 from smartmed.models.defaults import build_default_settings, build_default_user, build_default_app_state
 
 from smartmed.ui.screens.status_screen import StatusScreen
@@ -33,7 +32,6 @@ from smartmed.services.schedule_service import (
     berechne_naechste_einnahme,
     bestaetige_offene_einnahmen,    
 )
-
 
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout

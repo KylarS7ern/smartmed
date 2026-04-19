@@ -1,0 +1,5 @@
+[SmartMed] main.py gestartet
+[SmartMed] set_vkeyboard_class(BigVKeyboard)
+[SmartMed] create_app() wird aufgerufen
+[SmartMed] app.run() startet
+[SmartMed] app.run() beendet
