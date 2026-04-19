@@ -7,6 +7,11 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
 
+from smartmed.services.alarm_settings_service import (
+    build_alarm_settings_form_data,
+    build_alarm_settings_update,
+    resolve_email_for_recipient_choice,
+)
 
 class SettingsScreen(Screen):
     def __init__(self, **kwargs):
@@ -171,38 +176,14 @@ class SettingsScreen(Screen):
     def on_pre_enter(self, *args):
         """Aktuelle Einstellungen ins UI laden, wenn Screen angezeigt wird."""
         app = App.get_running_app()
+        form_data = build_alarm_settings_form_data(app.settings)
 
-        delay = app.settings.get('alarm_delay_min', 30)
-        self.alarm_delay_input.text = str(delay)
-
-        mode = app.settings.get('alarm_mode', 'popup')
-        if mode == 'log':
-            self.alarm_mode_spinner.text = 'Nur Log'
-        else:
-            self.alarm_mode_spinner.text = 'Popup + Log'
-
-        notify_mode = app.settings.get('notify_mode', 'none')
-        if notify_mode == 'email':
-            self.notify_spinner.text = 'Nur E-Mail'
-        elif notify_mode == 'telegram':
-            self.notify_spinner.text = 'Nur Telegram'
-        elif notify_mode == 'both':
-            self.notify_spinner.text = 'E-Mail + Telegram'
-        else:
-            self.notify_spinner.text = 'Nichts'
-
-        email_recipient = app.settings.get('email_recipient', 'manual')
-        if email_recipient == 'doctor':
-            self.email_recipients_spinner.text = 'Arzt'
-        elif email_recipient == 'contact1':
-            self.email_recipients_spinner.text = 'Kontakt 1'
-        elif email_recipient == 'contact2':
-            self.email_recipients_spinner.text = 'Kontakt 2'
-        else:
-            self.email_recipients_spinner.text = 'Manuell'
-
-        self.email_to_input.text = app.settings.get('email_to', '')
-        self.telegram_chat_id_input.text = app.settings.get('telegram_chat_id', '')
+        self.alarm_delay_input.text = form_data['alarm_delay_text']
+        self.alarm_mode_spinner.text = form_data['alarm_mode_text']
+        self.notify_spinner.text = form_data['notify_text']
+        self.email_recipients_spinner.text = form_data['email_recipient_text']
+        self.email_to_input.text = form_data['email_to']
+        self.telegram_chat_id_input.text = form_data['telegram_chat_id']
 
     def zeige_info_popup(self, instance):
         """Zeigt die ausführliche Anleitung zur Benachrichtigung als Popup an."""
@@ -257,17 +238,13 @@ class SettingsScreen(Screen):
         """Wenn Empfänger-Auswahl geändert wird, passende Adresse einsetzen."""
         app = App.get_running_app()
 
-        if value == 'Arzt':
-            email = getattr(app, 'doctor_email', '').strip()
-            self.email_to_input.text = email
-        elif value == 'Kontakt 1':
-            email = getattr(app, 'contact1_email', '').strip()
-            self.email_to_input.text = email
-        elif value == 'Kontakt 2':
-            email = getattr(app, 'contact2_email', '').strip()
-            self.email_to_input.text = email
-        else:
-            pass
+        self.email_to_input.text = resolve_email_for_recipient_choice(
+            value,
+            doctor_email=getattr(app, 'doctor_email', ''),
+            contact1_email=getattr(app, 'contact1_email', ''),
+            contact2_email=getattr(app, 'contact2_email', ''),
+            current_email=self.email_to_input.text,
+        )
 
     def sende_testnachricht(self, instance):
         app = App.get_running_app()
@@ -286,50 +263,23 @@ class SettingsScreen(Screen):
     def speichern_einstellungen(self, instance):
         app = App.get_running_app()
 
-        try:
-            delay = int(self.alarm_delay_input.text.strip() or '30')
-            if delay <= 0:
-                raise ValueError()
-        except ValueError:
-            delay = 30
-            print("Ungültige Alarmeit, auf 30 minten gesetzt.")
+        result = build_alarm_settings_update(
+            alarm_delay_text=self.alarm_delay_input.text,
+            alarm_mode_text=self.alarm_mode_spinner.text,
+            notify_text=self.notify_spinner.text,
+            email_to_text=self.email_to_input.text,
+            telegram_chat_id_text=self.telegram_chat_id_input.text,
+            email_recipient_text=self.email_recipients_spinner.text,
+        )
 
-        app.settings['alarm_delay_min'] = delay
-
-        text = self.alarm_mode_spinner.text
-        if text == 'Nur Log':
-            mode = 'log'
-        else:
-            mode = 'popup'
-        app.settings['alarm_mode'] = mode
-
-        nt = self.notify_spinner.text
-        if nt == 'Nur E-Mail':
-            notify_mode = 'email'
-        elif nt == 'Nur Telegram':
-            notify_mode = 'telegram'
-        elif nt == 'E-Mail + Telegram':
-            notify_mode = 'both'
-        else:
-            notify_mode = 'none'
-        app.settings['notify_mode'] = notify_mode
-
-        app.settings['email_to'] = self.email_to_input.text.strip()
-        app.settings['telegram_chat_id'] = self.telegram_chat_id_input.text.strip()
-
-        er_text = self.email_recipients_spinner.text
-        if er_text == 'Arzt':
-            app.settings['email_recipient'] = 'doctor'
-        elif er_text == 'Kontakt 1':
-            app.settings['email_recipient'] = 'contact1'
-        elif er_text == 'Kontakt 2':
-            app.settings['email_recipient'] = 'contact2'
-        else:
-            app.settings['email_recipient'] = 'manual'
-
+        app.settings.update(result['settings_update'])
         app.save_data()
-        print('Alarm-Einstellungen gespeichert:', app.settings)
 
+        if result['warning']:
+            print(result['warning'])
+
+        print('Alarm-Einstellungen gespeichert:', app.settings)
+        
     def zurueck_zum_menue(self, instance):
         app = App.get_running_app()
         app.root.current = 'settings_menu'
