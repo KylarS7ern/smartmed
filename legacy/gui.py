@@ -1,9 +1,13 @@
 from smartmed.config import DATA_FILE
+
 from smartmed.services.storage_service import load_json_data, save_json_data
 from smartmed.services.user_state_service import load_user_into_app, store_current_user_state
 from smartmed.services.app_persistence_service import apply_loaded_data, build_data_to_save
-from smartmed.models.defaults import build_default_settings, build_default_user
+from smartmed.services.event_log_service import append_log_entry
 from smartmed.services.notification_service import send_alarm_notifications
+
+from smartmed.models.defaults import build_default_settings, build_default_user
+
 from smartmed.ui.screens.status_screen import StatusScreen
 from smartmed.ui.screens.log_screen import LogScreen
 from smartmed.ui.screens.main_menu_screen import MainMenuScreen
@@ -111,12 +115,9 @@ class SmartMedGUI(App):
         save_json_data(DATA_FILE, data)
 
     def log_event(self, text: str):
-        """Einen Log-Eintrag zur Liste inzufügen (ohne sofort zu speichern)."""
-        ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.log_eintraege.append({'zeit': ts, 'text': text})
-
-        if len(self.log_eintraege) > 1000:
-            self.log_eintraege = self.log_eintraege[-1000:]
+        """Fügt einen Log-Eintrag hinzu und speichert die Daten."""
+        append_log_entry(self.log_eintraege, text)
+        self.save_data()
 
     def naechste_einnahme(self):
         """Gibt (eintrag, datetime) für die nächste geplante Einnahme zurück."""
