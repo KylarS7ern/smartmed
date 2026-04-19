@@ -5,6 +5,11 @@ from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
 
+from smartmed.services.admin_pin_service import (
+    build_admin_pin_status_text,
+    build_admin_pin_update,
+)
+
 
 class AdvancedSettingsScreen(Screen):
     def __init__(self, **kwargs):
@@ -97,37 +102,29 @@ class AdvancedSettingsScreen(Screen):
     def on_pre_enter(self, *args):
         """Status anzeigen, wenn Screen geöffnet wird."""
         app = App.get_running_app()
-        if getattr(app, 'admin_pin', ''):
-            self.pin_info_label.text = 'Aktueller Status: PIN ist gesetzt'
-        else:
-            self.pin_info_label.text = 'Aktueller Status: Kein PIN gesetzt'
+        self.pin_info_label.text = build_admin_pin_status_text(
+            getattr(app, 'admin_pin', '')
+        )
         self.pin_input.text = ''
         self.pin_repeat_input.text = ''
 
     def speichern_pin(self, instance):
         """Admin-PIN speichern oder entfernen."""
         app = App.get_running_app()
-        pin1 = self.pin_input.text.strip()
-        pin2 = self.pin_repeat_input.text.strip()
 
-        if not pin1 and not pin2:
-            app.admin_pin = ''
-            app.save_data()
-            self.pin_info_label.text = 'PIN-Schutz wurde deaktiviert.'
+        result = build_admin_pin_update(
+            self.pin_input.text,
+            self.pin_repeat_input.text,
+        )
+
+        if not result['ok']:
+            self.pin_info_label.text = result['message']
             return
 
-        if pin1 != pin2:
-            self.pin_info_label.text = 'Die eingegebenen PINs stimmen nicht überein.'
-            return
-
-        if len(pin1) < 4:
-            self.pin_info_label.text = 'PIN muss mindestens 4 Zeichen lang sein.'
-            return
-
-        app.admin_pin = pin1
+        app.admin_pin = result['admin_pin']
         app.save_data()
-        self.pin_info_label.text = 'Admin-PIN wurde gespeichert.'
-
+        self.pin_info_label.text = result['message']
+        
     def zurueck(self, instance):
         app = App.get_running_app()
         app.root.current = 'settings_menu'

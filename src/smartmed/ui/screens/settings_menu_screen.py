@@ -6,6 +6,11 @@ from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
 
+from smartmed.services.admin_pin_service import (
+    has_admin_pin,
+    verify_admin_pin,
+)
+
 
 class SettingsMenuScreen(Screen):
     def __init__(self, **kwargs):
@@ -64,7 +69,7 @@ class SettingsMenuScreen(Screen):
         app = App.get_running_app()
         pin = getattr(app, 'admin_pin', '')
 
-        if not pin:
+        if not has_admin_pin(pin):
             app.root.current = target_screen_name
             return
 
@@ -105,17 +110,19 @@ class SettingsMenuScreen(Screen):
         )
 
         def on_ok(_inst):
-            if pin_input.text == pin:
+            result = verify_admin_pin(pin, pin_input.text)
+
+            if result['ok']:
                 popup.dismiss()
                 app.root.current = target_screen_name
             else:
-                label.text = 'Falscher PIN. Bitte erneut eingeben:'
+                label.text = result['message']
 
         btn_ok.bind(on_press=on_ok)
         btn_cancel.bind(on_press=lambda *_: popup.dismiss())
 
         popup.open()
-
+    
     def zurueck_zum_menue(self, instance):
         app = App.get_running_app()
         app.root.current = 'menu'
