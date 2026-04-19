@@ -7,6 +7,8 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
 
+from smartmed.ui.navigation import go_to_menu
+
 from smartmed.services.user_account_service import (
     create_user_result,
     list_sorted_usernames,
@@ -117,7 +119,7 @@ class UserLoginScreen(Screen):
 
         if not user_requires_password(app.users, username):
             app.switch_user(username)
-            self.manager.current = 'menu'
+            go_to_menu(app)
             return
 
         layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
@@ -166,7 +168,7 @@ class UserLoginScreen(Screen):
             if result['ok']:
                 popup.dismiss()
                 app.switch_user(username)
-                app.root.current = 'menu'
+                go_to_menu(app)
             else:
                 label.text = result['message']
 
@@ -236,7 +238,7 @@ class UserLoginScreen(Screen):
 
             popup.dismiss()
             app.switch_user(result['username'])
-            app.root.current = 'menu'
+            go_to_menu(app)
 
         btn_ok.bind(on_press=on_ok)
         btn_cancel.bind(on_press=lambda *_: popup.dismiss())

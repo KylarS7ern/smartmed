@@ -4,6 +4,14 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 
+from smartmed.ui.navigation import (
+    go_to_log,
+    go_to_login,
+    go_to_plan_list,
+    go_to_settings_menu,
+    go_to_status,
+)
+
 
 class MainMenuScreen(Screen):
     def __init__(self, **kwargs):
@@ -21,13 +29,13 @@ class MainMenuScreen(Screen):
         btn_plan = Button(text='Einnahmeplan', size_hint=(1, 0.15))
         btn_settings = Button(text='Einstellungen', size_hint=(1, 0.15))
         btn_log = Button(text='Log anzeigen', size_hint=(1, 0.15))
-        btn_back = Button(text='zurück zum start', size_hint=(1, 0.15))
+        btn_back = Button(text='Benutzer wechseln', size_hint=(1, 0.15))
 
         btn_status.bind(on_press=self.zeige_status)
         btn_plan.bind(on_press=self.zeige_plan)
         btn_settings.bind(on_press=self.zeige_einstellungen)
         btn_log.bind(on_press=self.zeige_log)
-        btn_back.bind(on_press=self.zurueck_zum_start)
+        btn_back.bind(on_press=self.benutzer_wechseln)
 
         layout.add_widget(titel)
         layout.add_widget(btn_status)
@@ -38,29 +46,22 @@ class MainMenuScreen(Screen):
 
         self.add_widget(layout)
 
-    def zurueck_zum_start(self, instance):
+    def benutzer_wechseln(self, instance):
         app = App.get_running_app()
-        app.root.current = 'login'
+        go_to_login(app)
 
     def zeige_status(self, instance):
         app = App.get_running_app()
-        status_screen = app.root.get_screen('status')
-        status_screen.tages_offset = 0
-        status_screen.update_status()
-        app.root.current = 'status'
+        go_to_status(app)
 
     def zeige_plan(self, instance):
         app = App.get_running_app()
-        plan_screen = app.root.get_screen('plan_list')
-        plan_screen.update_liste()
-        app.root.current = 'plan_list'
+        go_to_plan_list(app)
 
     def zeige_log(self, instance):
         app = App.get_running_app()
-        log_screen = app.root.get_screen('log')
-        log_screen.update_log()
-        app.root.current = 'log'
+        go_to_log(app)
 
     def zeige_einstellungen(self, instance):
         app = App.get_running_app()
-        app.root.current = 'settings_menu'
+        go_to_settings_menu(app)

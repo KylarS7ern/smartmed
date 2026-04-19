@@ -1,6 +1,5 @@
 from kivy.uix.screenmanager import ScreenManager
 
-from smartmed.ui.screens.start_screen import StartScreen
 from smartmed.ui.screens.user_login_screen import UserLoginScreen
 from smartmed.ui.screens.main_menu_screen import MainMenuScreen
 from smartmed.ui.screens.status_screen import StatusScreen
@@ -17,7 +16,6 @@ def build_screen_manager() -> ScreenManager:
     sm = ScreenManager()
 
     sm.add_widget(UserLoginScreen(name='login'))
-    sm.add_widget(StartScreen(name='start'))
     sm.add_widget(MainMenuScreen(name='menu'))
     sm.add_widget(StatusScreen(name='status'))
     sm.add_widget(PlanListScreen(name='plan_list'))

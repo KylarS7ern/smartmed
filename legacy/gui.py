@@ -22,7 +22,6 @@ from smartmed.ui.screens.main_menu_screen import MainMenuScreen
 from smartmed.ui.screens.settings_menu_screen import SettingsMenuScreen
 from smartmed.ui.screens.plan_list_screen import PlanListScreen
 from smartmed.ui.screens.user_login_screen import UserLoginScreen
-from smartmed.ui.screens.start_screen import StartScreen
 from smartmed.ui.screens.patient_settings_screen import PatientSettingsScreen
 from smartmed.ui.screens.advanced_settings_screen import AdvancedSettingsScreen
 from smartmed.ui.screens.settings_screen import SettingsScreen
