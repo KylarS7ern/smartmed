@@ -1,20 +1,15 @@
-from smartmed.config import (
-    DATA_FILE,
-    TELEGRAM_BOT_TOKEN,
-    EMAIL_SMTP_SERVER,
-    EMAIL_SMTP_PORT,
-    EMAIL_USERNAME,
-    EMAIL_PASSWORT,
-)
+from smartmed.config import DATA_FILE
+
 
 from smartmed.services.storage_service import load_json_data, save_json_data
 from smartmed.services.user_state_service import load_user_into_app, store_current_user_state
 from smartmed.services.app_persistence_service import apply_loaded_data, build_data_to_save
 from smartmed.services.event_log_service import append_log_entry
-from smartmed.services.notification_service import send_alarm_notifications
+from smartmed.services.notification_service import send_alarm_notifications_for_settings
+
+
 
 from smartmed.models.defaults import build_default_settings, build_default_user, build_default_app_state
-
 
 from smartmed.ui.screens.status_screen import StatusScreen
 from smartmed.ui.screens.log_screen import LogScreen
@@ -271,17 +266,10 @@ class SmartMedGUI(App):
         self.save_data()
         
     def sende_alarm_benachrichtigungen(self, eintrag):
-        """Je nach Einstellung: E-Mail / Telegram / beides / nichts senden."""
-        send_alarm_notifications(
+        """Alarm-Benachrichtigungen gemäss aktuellen Einstellungen senden."""
+        send_alarm_notifications_for_settings(
             eintrag=eintrag,
-            notify_mode=self.settings.get('notify_mode', 'none'),
-            email_to=self.settings.get('email_to', '').strip(),
-            telegram_chat_id=self.settings.get('telegram_chat_id', '').strip(),
-            telegram_bot_token=TELEGRAM_BOT_TOKEN,
-            email_smtp_server=EMAIL_SMTP_SERVER,
-            email_smtp_port=EMAIL_SMTP_PORT,
-            email_username=EMAIL_USERNAME,
-            email_password=EMAIL_PASSWORT,
+            settings=self.settings,
             log_callback=self.log_event,
         )
 

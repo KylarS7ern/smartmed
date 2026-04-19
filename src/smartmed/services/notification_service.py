@@ -1,4 +1,13 @@
 from email.message import EmailMessage
+
+from smartmed.config import (
+    TELEGRAM_BOT_TOKEN,
+    EMAIL_SMTP_SERVER,
+    EMAIL_SMTP_PORT,
+    EMAIL_USERNAME,
+    EMAIL_PASSWORT,
+)
+
 import smtplib
 import requests
 
@@ -117,3 +126,24 @@ def send_alarm_notifications(
             text=text,
             log_callback=log_callback,
         )
+
+
+def send_alarm_notifications_for_settings(
+    *,
+    eintrag: dict,
+    settings: dict,
+    log_callback=None,
+) -> None:
+    """Liest die Alarm-Einstellungen aus settings und ruft den generischen Versand auf."""
+    send_alarm_notifications(
+        eintrag=eintrag,
+        notify_mode=settings.get("notify_mode", "none"),
+        email_to=settings.get("email_to", "").strip(),
+        telegram_chat_id=settings.get("telegram_chat_id", "").strip(),
+        telegram_bot_token=TELEGRAM_BOT_TOKEN,
+        email_smtp_server=EMAIL_SMTP_SERVER,
+        email_smtp_port=EMAIL_SMTP_PORT,
+        email_username=EMAIL_USERNAME,
+        email_password=EMAIL_PASSWORT,
+        log_callback=log_callback,
+    )
