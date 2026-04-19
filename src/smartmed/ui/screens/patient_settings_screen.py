@@ -5,6 +5,7 @@ from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
 
+from smartmed.ui.navigation import go_to_settings_menu
 from smartmed.services.patient_profile_service import (
     apply_patient_profile_update,
     build_patient_form_data,
@@ -283,7 +284,7 @@ class PatientSettingsScreen(Screen):
             app.patient_name,
             app.patient_geburt,
         )
-        
+
     def zurueck(self, instance):
         app = App.get_running_app()
-        app.root.current = 'settings_menu'
+        go_to_settings_menu(app)

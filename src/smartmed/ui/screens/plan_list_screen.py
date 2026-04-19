@@ -6,6 +6,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
 
+from smartmed.ui.navigation import go_to_menu, go_to_plan_edit
 from smartmed.services.plan_service import delete_plan_entry
 
 
@@ -180,13 +181,11 @@ class PlanListScreen(Screen):
 
             self.update_liste()
             popup.dismiss()
-            
+
         def bearbeiten(_instance):
             app = App.get_running_app()
-            edit_screen = app.root.get_screen('plan_edit')
-            edit_screen.start_bearbeiten(eintrag)
             popup.dismiss()
-            app.root.current = 'plan_edit'
+            go_to_plan_edit(app, eintrag)
 
         btn_loeschen.bind(on_press=loeschen)
         btn_bearbeiten.bind(on_press=bearbeiten)
@@ -196,8 +195,8 @@ class PlanListScreen(Screen):
 
     def neuer_eintrag(self, instance):
         app = App.get_running_app()
-        app.root.current = 'plan_edit'
+        go_to_plan_edit(app)
 
     def zurueck_zum_menue(self, instance):
         app = App.get_running_app()
-        app.root.current = 'menu'
+        go_to_menu(app)

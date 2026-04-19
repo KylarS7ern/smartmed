@@ -4,6 +4,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
+from smartmed.ui.navigation import go_to_menu
 
 
 class LogScreen(Screen):
@@ -71,4 +72,4 @@ class LogScreen(Screen):
 
     def zurueck_zum_menue(self, instance):
         app = App.get_running_app()
-        app.root.current = 'menu'
+        go_to_menu(app)

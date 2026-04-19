@@ -7,6 +7,7 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
 
+from smartmed.ui.navigation import go_to_settings_menu
 from smartmed.services.alarm_settings_service import (
     build_alarm_settings_form_data,
     build_alarm_settings_update,
@@ -279,7 +280,7 @@ class SettingsScreen(Screen):
             print(result['warning'])
 
         print('Alarm-Einstellungen gespeichert:', app.settings)
-        
+
     def zurueck_zum_menue(self, instance):
         app = App.get_running_app()
-        app.root.current = 'settings_menu'
+        go_to_settings_menu(app)

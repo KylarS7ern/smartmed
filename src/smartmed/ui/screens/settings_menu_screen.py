@@ -11,6 +11,13 @@ from smartmed.services.admin_pin_service import (
     verify_admin_pin,
 )
 
+from smartmed.ui.navigation import (
+    go_to_menu,
+    go_to_settings,
+    go_to_settings_advanced,
+    go_to_settings_patient,
+)
+
 
 class SettingsMenuScreen(Screen):
     def __init__(self, **kwargs):
@@ -56,7 +63,7 @@ class SettingsMenuScreen(Screen):
 
     def zeige_patient(self, instance):
         app = App.get_running_app()
-        app.root.current = 'settings_patient'
+        go_to_settings_patient(app)
 
     def zeige_alarm(self, instance):
         self._check_admin_pin_and_open('settings')
@@ -64,13 +71,20 @@ class SettingsMenuScreen(Screen):
     def zeige_erweitert(self, instance):
         self._check_admin_pin_and_open('settings_advanced')
 
+    def _open_target_screen(self, app, target_screen_name):
+        """Öffnet den gewünschten Settings-Screen."""
+        if target_screen_name == 'settings':
+            go_to_settings(app)
+        elif target_screen_name == 'settings_advanced':
+            go_to_settings_advanced(app)
+
     def _check_admin_pin_and_open(self, target_screen_name):
         """Prüfen, ob Admin-PIN gesetzt ist und ggf. abfragen."""
         app = App.get_running_app()
         pin = getattr(app, 'admin_pin', '')
 
         if not has_admin_pin(pin):
-            app.root.current = target_screen_name
+            self._open_target_screen(app, target_screen_name)
             return
 
         layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
@@ -114,7 +128,7 @@ class SettingsMenuScreen(Screen):
 
             if result['ok']:
                 popup.dismiss()
-                app.root.current = target_screen_name
+                self._open_target_screen(app, target_screen_name)
             else:
                 label.text = result['message']
 
@@ -125,4 +139,4 @@ class SettingsMenuScreen(Screen):
     
     def zurueck_zum_menue(self, instance):
         app = App.get_running_app()
-        app.root.current = 'menu'
+        go_to_menu(app)

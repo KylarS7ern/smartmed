@@ -6,6 +6,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
+from smartmed.ui.navigation import go_to_menu
 
 
 class StatusScreen(Screen):
@@ -144,7 +145,7 @@ class StatusScreen(Screen):
 
     def zurueck_zum_menue(self, instance):
         app = App.get_running_app()
-        app.root.current = 'menu'
+        go_to_menu(app)
 
     def tag_zurueck(self, instance):
         """Einen Tag zurück blättern."""

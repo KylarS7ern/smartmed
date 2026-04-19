@@ -7,6 +7,7 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
 
+from smartmed.ui.navigation import go_to_menu
 from smartmed.services.plan_service import create_plan_entry, update_plan_entry
 
 
@@ -239,4 +240,4 @@ class PlanEintragErfassenScreen(Screen):
 
     def zurueck_zum_menue(self, instance):
         app = App.get_running_app()
-        app.root.current = 'menu'
+        go_to_menu(app)
