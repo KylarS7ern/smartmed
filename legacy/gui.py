@@ -12,6 +12,7 @@ from smartmed.services.alarm_workflow_service import (
     process_overdue_alarm_actions,
     execute_alarm_action,
     )
+from smartmed.services.runtime_state_service import reset_runtime_state
 
 from smartmed.models.defaults import build_default_settings, build_default_user, build_default_app_state
 
@@ -66,7 +67,8 @@ class SmartMedGUI(App):
 
         self.current_user = username
         load_user_into_app(self, username)
-        self.save_data()    
+        reset_runtime_state(self)
+        self.save_data()
         print(f'Benutzer gewechselt zu: {username}')
  
     def load_data(self):
@@ -77,6 +79,7 @@ class SmartMedGUI(App):
 
         apply_loaded_data(self, data)
         load_user_into_app(self, self.current_user)
+        reset_runtime_state(self)
         print(f'Aktueller Benutzer: {self.current_user}')
 
     def save_data(self):
