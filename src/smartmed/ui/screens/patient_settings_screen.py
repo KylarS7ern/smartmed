@@ -5,6 +5,11 @@ from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
 
+from smartmed.services.patient_profile_service import (
+    apply_patient_profile_update,
+    build_patient_form_data,
+    build_patient_profile_update,
+)
 
 class PatientSettingsScreen(Screen):
     def __init__(self, **kwargs):
@@ -237,37 +242,48 @@ class PatientSettingsScreen(Screen):
     def on_pre_enter(self, *args):
         """Beim Öffnen aktuelle Daten laden."""
         app = App.get_running_app()
-        self.name_input.text = str(getattr(app, 'patient_name', '') or '')
-        self.geburt_input.text = str(getattr(app, 'patient_geburt', '') or '')
-        self.address_input.text = str(getattr(app, 'patient_address', '') or '')
-        self.doc_name_input.text = str(getattr(app, 'doctor_name', '') or '')
-        self.doc_email_input.text = str(getattr(app, 'doctor_email', '') or '')
-        self.doc_phone_input.text = str(getattr(app, 'doctor_phone', '') or '')
-        self.c1_name_input.text = str(getattr(app, 'contact1_name', '') or '')
-        self.c1_email_input.text = str(getattr(app, 'contact1_email', '') or '')
-        self.c1_phone_input.text = str(getattr(app, 'contact1_phone', '') or '')
-        self.c2_name_input.text = str(getattr(app, 'contact2_name', '') or '')
-        self.c2_email_input.text = str(getattr(app, 'contact2_email', '') or '')
-        self.c2_phone_input.text = str(getattr(app, 'contact2_phone', '') or '')
+        form_data = build_patient_form_data(app)
+
+        self.name_input.text = form_data['patient_name']
+        self.geburt_input.text = form_data['patient_geburt']
+        self.address_input.text = form_data['patient_address']
+        self.doc_name_input.text = form_data['doctor_name']
+        self.doc_email_input.text = form_data['doctor_email']
+        self.doc_phone_input.text = form_data['doctor_phone']
+        self.c1_name_input.text = form_data['contact1_name']
+        self.c1_email_input.text = form_data['contact1_email']
+        self.c1_phone_input.text = form_data['contact1_phone']
+        self.c2_name_input.text = form_data['contact2_name']
+        self.c2_email_input.text = form_data['contact2_email']
+        self.c2_phone_input.text = form_data['contact2_phone']
 
     def speichern_patient(self, instance):
         app = App.get_running_app()
-        app.patient_name = self.name_input.text.strip() or 'Demo-Patient'
-        app.patient_geburt = self.geburt_input.text.strip() or '-'
-        app.patient_address = self.address_input.text.strip()
-        app.doctor_name = self.doc_name_input.text.strip()
-        app.doctor_email = self.doc_email_input.text.strip()
-        app.doctor_phone = self.doc_phone_input.text.strip()
-        app.contact1_name = self.c1_name_input.text.strip()
-        app.contact1_email = self.c1_email_input.text.strip()
-        app.contact1_phone = self.c1_phone_input.text.strip()
-        app.contact2_name = self.c2_name_input.text.strip()
-        app.contact2_email = self.c2_email_input.text.strip()
-        app.contact2_phone = self.c2_phone_input.text.strip()
 
+        profile_update = build_patient_profile_update(
+            patient_name=self.name_input.text,
+            patient_geburt=self.geburt_input.text,
+            patient_address=self.address_input.text,
+            doctor_name=self.doc_name_input.text,
+            doctor_email=self.doc_email_input.text,
+            doctor_phone=self.doc_phone_input.text,
+            contact1_name=self.c1_name_input.text,
+            contact1_email=self.c1_email_input.text,
+            contact1_phone=self.c1_phone_input.text,
+            contact2_name=self.c2_name_input.text,
+            contact2_email=self.c2_email_input.text,
+            contact2_phone=self.c2_phone_input.text,
+        )
+
+        apply_patient_profile_update(app, profile_update)
         app.save_data()
-        print('Patientendaten gespeichert:', app.patient_name, app.patient_geburt)
 
+        print(
+            'Patientendaten gespeichert:',
+            app.patient_name,
+            app.patient_geburt,
+        )
+        
     def zurueck(self, instance):
         app = App.get_running_app()
         app.root.current = 'settings_menu'
