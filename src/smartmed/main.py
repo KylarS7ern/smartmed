@@ -1,3 +1,5 @@
+import smartmed.config  # Kivy-Config muss vor weiteren Kivy-Imports geladen werden
+
 from kivy.core.window import Window
 
 from smartmed.debug_file import debug_log, debug_log_reset

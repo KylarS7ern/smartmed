@@ -8,7 +8,6 @@ class BigVKeyboard(VKeyboard):
         debug_log("[SmartMed] BigVKeyboard __init__ gestartet")
         super().__init__(**kwargs)
         self.font_size = 30
-        self.height = 380
         debug_log(
             f"[SmartMed] BigVKeyboard nach __init__: "
             f"size={self.size}, scale={self.scale}, docked={self.docked}"
@@ -19,10 +18,18 @@ class BigVKeyboard(VKeyboard):
             f"[SmartMed] setup_mode_dock VORHER: "
             f"size={self.size}, scale={self.scale}"
         )
-        self.height = 380
+
+        self.width = 500
         super().setup_mode_dock(*args)
+        self.height = 300
+
         debug_log(
             f"[SmartMed] setup_mode_dock NACHHER: "
             f"size={self.size}, scale={self.scale}, "
             f"effective_height={self.height * self.scale}"
         )
+
+
+
+
+        
