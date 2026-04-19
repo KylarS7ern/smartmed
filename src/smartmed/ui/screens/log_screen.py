@@ -4,6 +4,8 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
+
+from smartmed.services.event_log_service import get_log_entry_timestamp
 from smartmed.ui.navigation import go_to_menu
 
 
@@ -64,7 +66,7 @@ class LogScreen(Screen):
 
         lines = []
         for entry in eintraege:
-            ts = entry.get('zeit', '')
+            ts = get_log_entry_timestamp(entry)
             txt = entry.get('text', '')
             lines.append(f"{ts} - {txt}")
 
