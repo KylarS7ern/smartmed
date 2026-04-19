@@ -27,4 +27,20 @@ def process_overdue_alarm_actions(
             console_text="ALARM: Einnahme NICHT bestätigt!",
             log_text="ALARM ausgelöst: Einnahme nicht bestätigt",
         )
-        
+
+def execute_alarm_action(
+    *,
+    eintrag: dict,
+    console_text: str,
+    log_text: str,
+    log_callback,
+    notify_callback,
+    popup_callback,
+    save_callback,
+) -> None:
+    """Führt eine Alarm-Aktion mit den übergebenen App-Callbacks aus."""
+    print(console_text)
+    log_callback(log_text)
+    notify_callback(eintrag)
+    popup_callback(eintrag)
+    save_callback()

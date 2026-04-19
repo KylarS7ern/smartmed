@@ -7,7 +7,12 @@ from smartmed.services.app_persistence_service import apply_loaded_data, build_d
 from smartmed.services.event_log_service import append_log_entry
 from smartmed.services.intake_workflow_service import prepare_due_intake_workflow
 from smartmed.services.notification_service import send_alarm_notifications_for_settings
-from smartmed.services.alarm_workflow_service import (collect_overdue_alarm_actions, process_overdue_alarm_actions,)
+from smartmed.services.alarm_workflow_service import (
+    collect_overdue_alarm_actions, 
+    process_overdue_alarm_actions,
+    execute_alarm_action,
+    )
+
 
 from smartmed.models.defaults import build_default_settings, build_default_user, build_default_app_state
 
@@ -234,13 +239,16 @@ class SmartMedGUI(App):
         )
 
     def _loese_nicht_bestaetigt_alarm_aus(self, eintrag, console_text, log_text):
-        """Führt alle Seiteneffekte für einen Alarm wegen nicht bestätigter Einnahme aus."""
-        print(console_text)
-        self.log_event(log_text)
-        self.sende_alarm_benachrichtigungen(eintrag)
-
-        if self.settings.get('alarm_mode', 'popup') == 'popup':
-            self._zeige_alarm_popup(eintrag)
+        """Löst Alarm für eine nicht bestätigte Einnahme aus."""
+        execute_alarm_action(
+            eintrag=eintrag,
+            console_text=console_text,
+            log_text=log_text,
+            log_callback=self.log_event,
+            notify_callback=self.sende_alarm_benachrichtigungen,
+            popup_callback=self._zeige_alarm_popup,
+            save_callback=self.save_data,
+        )
 
     def build(self):
         sm = build_screen_manager()
