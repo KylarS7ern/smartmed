@@ -34,3 +34,27 @@ def build_default_user(
         "plan_eintraege": [],
         "log_eintraege": [],
     }
+
+def build_default_app_state() -> dict:
+    return {
+        "patient_name": "Demo-Patient",
+        "patient_geburt": "01.01.2000",
+        "plan_eintraege": [],
+        "fach_medikamente": {},
+        "log_eintraege": [],
+        "offene_einnahmen": [],
+        "patient_address": "",
+        "doctor_name": "",
+        "doctor_email": "",
+        "doctor_phone": "",
+        "contact1_name": "",
+        "contact1_email": "",
+        "contact1_phone": "",
+        "contact2_name": "",
+        "contact2_email": "",
+        "contact2_phone": "",
+        "admin_pin": "",
+        "settings": build_default_settings(),
+        "users": {},
+        "current_user": None,
+    }

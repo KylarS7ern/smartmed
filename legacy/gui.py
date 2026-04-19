@@ -13,7 +13,8 @@ from smartmed.services.app_persistence_service import apply_loaded_data, build_d
 from smartmed.services.event_log_service import append_log_entry
 from smartmed.services.notification_service import send_alarm_notifications
 
-from smartmed.models.defaults import build_default_settings, build_default_user
+from smartmed.models.defaults import build_default_settings, build_default_user, build_default_app_state
+
 
 from smartmed.ui.screens.status_screen import StatusScreen
 from smartmed.ui.screens.log_screen import LogScreen
@@ -57,31 +58,9 @@ class SmartMedGUI(App):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.patient_name = 'Demo-Patient'
-        self.patient_geburt = '01.01.2000'
-        
-        self.plan_eintraege = []
-        self.fach_medikamente = {}
-        self.log_eintraege = []
-        self.offene_einnahmen = []
-
-        self.patient_address = ''
-        self.doctor_name = ''
-        self.doctor_email = ''
-        self.doctor_phone = ''
-        self.contact1_name = ''
-        self.contact1_email = ''
-        self.contact1_phone = ''
-        self.contact2_name = ''
-        self.contact2_email = ''
-        self.contact2_phone = ''
-
-        self.admin_pin = ''
-
-        self.settings  = build_default_settings()
-
-        self.users = {}
-        self.current_user = None
+        state = build_default_app_state()
+        for key, value in state.items():
+            setattr(self, key, value)
         
         self.load_data()
 
