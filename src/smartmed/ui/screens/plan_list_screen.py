@@ -6,6 +6,8 @@ from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
 
+from smartmed.services.plan_service import delete_plan_entry
+
 
 class PlanListScreen(Screen):
     def __init__(self, **kwargs):
@@ -164,26 +166,21 @@ class PlanListScreen(Screen):
         )
 
         def loeschen(_instance):
-            try:
-                app.plan_eintraege.remove(eintrag)
-            except ValueError:
-                pass
-
-            app.fach_medikamente = {}
-            for e in app.plan_eintraege:
-                f = e.get('fach')
-                m = e.get('medikament')
-                if f and f not in app.fach_medikamente:
-                    app.fach_medikamente[f] = m
-
-            app.log_event(
-                f"Plan-Eintrag gelöscht: {tag} {zeit} | Fach {fach} | {med} (x{anzahl})"
+            result = delete_plan_entry(
+                plan_eintraege=app.plan_eintraege,
+                eintrag=eintrag,
             )
 
-            app.save_data()
+            app.fach_medikamente = result['fach_medikamente']
+
+            if result['ok']:
+                app.log_event(result['log_text'])
+            else:
+                print(result['message'])
+
             self.update_liste()
             popup.dismiss()
-
+            
         def bearbeiten(_instance):
             app = App.get_running_app()
             edit_screen = app.root.get_screen('plan_edit')

@@ -7,6 +7,8 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
 
+from smartmed.services.plan_service import create_plan_entry, update_plan_entry
+
 
 class PlanEintragErfassenScreen(Screen):
     def __init__(self, **kwargs):
@@ -161,73 +163,45 @@ class PlanEintragErfassenScreen(Screen):
             stunde == 'Stunde' or
             minute == 'Minute'
         ):
-            print('Bitte alle Felder auswählen/ausfüllen.')
+            self.zeige_meldung('Bitte alle Felder auswählen/ausfüllen.')
             return
 
         zeit = f'{stunde}:{minute}'
         anzahl_int = int(anzahl)
 
         if self.bearbeite_eintrag is not None:
-            vorhandenes_med = app.fach_medikamente.get(fach)
-            if vorhandenes_med and vorhandenes_med != med and fach != self.bearbeite_eintrag.get('fach'):
-                self.zeige_meldung(
-                    f"Fach {fach} ist bereits mit '{vorhandenes_med}' belegt.\n"
-                    'Bitte zuerst dort den Eintrag ändern oder löschen.'
-                )
-                return
-
-            self.bearbeite_eintrag['medikament'] = med
-            self.bearbeite_eintrag['fach'] = fach
-            self.bearbeite_eintrag['tag'] = tag
-            self.bearbeite_eintrag['zeit'] = zeit
-            self.bearbeite_eintrag['anzahl'] = int(anzahl)
-
-            app.fach_medikamente = {}
-            for e in app.plan_eintraege:
-                f = e.get('fach')
-                m = e.get('medikament')
-                if f and f not in app.fach_medikamente:
-                    app.fach_medikamente[f] = m
-
-            app.log_event(
-                f"Plan-Eintrag geändert: {tag} {zeit} | Fach {fach} | {med} (x{anzahl_int})"
+            result = update_plan_entry(
+                plan_eintraege=app.plan_eintraege,
+                fach_medikamente=app.fach_medikamente,
+                eintrag=self.bearbeite_eintrag,
+                medikament=med,
+                fach=fach,
+                tag=tag,
+                zeit=zeit,
+                anzahl=anzahl_int,
+            )
+        else:
+            result = create_plan_entry(
+                plan_eintraege=app.plan_eintraege,
+                fach_medikamente=app.fach_medikamente,
+                medikament=med,
+                fach=fach,
+                tag=tag,
+                zeit=zeit,
+                anzahl=anzahl_int,
             )
 
-            app.save_data()
-            self.felder_zuruecksetzen()
+        if not result['ok']:
+            self.zeige_meldung(result['message'])
+
+            prefill_medikament = result.get('prefill_medikament')
+            if prefill_medikament:
+                self.med_input.text = prefill_medikament
+
             return
 
-        vorhandenes_med = app.fach_medikamente.get(fach)
-
-        if vorhandenes_med is None:
-            app.fach_medikamente[fach] = med
-            print(f'Fach {fach} jetzt belegt mit: {med}')
-        elif vorhandenes_med != med:
-            meldung = (
-                f"Fach {fach} ist bereits mit '{vorhandenes_med}' belegt.\n\n"
-                "Bitte zuerst die Einträge / Belegung ändern, bevor ein anderes "
-                "Medikament für dieses Fach verwendet wird."
-            )
-
-            self.zeige_meldung(meldung)
-            self.med_input.text = vorhandenes_med
-            return
-
-        eintrag = {
-            'medikament': med,
-            'fach': fach,
-            'tag': tag,
-            'zeit': zeit,
-            'anzahl': anzahl_int
-        }
-
-        app.plan_eintraege.append(eintrag)
-
-        app.log_event(
-            f"Plan-Eintrag neu: {tag} {zeit} | Fach {fach} | {med} (x{anzahl_int})"
-        )
-
-        app.save_data()
+        app.fach_medikamente = result['fach_medikamente']
+        app.log_event(result['log_text'])
         self.felder_zuruecksetzen()
 
     def felder_zuruecksetzen(self):
