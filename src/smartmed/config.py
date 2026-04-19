@@ -7,6 +7,13 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 DATA_FILE = DATA_DIR / "smartmed_plan.json"
 
+# Benachrichtigung / Alarm
+TELEGRAM_BOT_TOKEN = ""
+EMAIL_SMTP_SERVER = "smtp.gmail.com"
+EMAIL_SMTP_PORT = 587
+EMAIL_USERNAME = "smartmedispender@gmail.com"
+EMAIL_PASSWORT = ""
+
 # Zielgerät: Raspberry Pi Touch Display 2
 TARGET_SCREEN_WIDTH = 720
 TARGET_SCREEN_HEIGHT = 1280

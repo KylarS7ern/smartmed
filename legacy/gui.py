@@ -1,4 +1,11 @@
-from smartmed.config import DATA_FILE
+from smartmed.config import (
+    DATA_FILE,
+    TELEGRAM_BOT_TOKEN,
+    EMAIL_SMTP_SERVER,
+    EMAIL_SMTP_PORT,
+    EMAIL_USERNAME,
+    EMAIL_PASSWORT,
+)
 
 from smartmed.services.storage_service import load_json_data, save_json_data
 from smartmed.services.user_state_service import load_user_into_app, store_current_user_state
@@ -45,13 +52,6 @@ from kivy.uix.scrollview import ScrollView
 from kivy.clock import Clock
 
 from datetime import datetime, timedelta
-
-TELEGRAM_BOT_TOKEN =  ''
-
-EMAIL_SMTP_SERVER = 'smtp.gmail.com'
-EMAIL_SMTP_PORT = 587
-EMAIL_USERNAME = 'smartmedispender@gmail.com'
-EMAIL_PASSWORT = ''
 
 class SmartMedGUI(App):
     def __init__(self, **kwargs):
