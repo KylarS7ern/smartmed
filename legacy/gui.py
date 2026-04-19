@@ -28,6 +28,7 @@ from smartmed.ui.screens.advanced_settings_screen import AdvancedSettingsScreen
 from smartmed.ui.screens.settings_screen import SettingsScreen
 from smartmed.ui.screens.plan_edit_screen import PlanEintragErfassenScreen
 from smartmed.ui.screen_factory import build_screen_manager
+from smartmed.ui.popups import show_due_intake_popup, show_alarm_popup
 
 from smartmed.services.schedule_service import (
     berechne_naechste_einnahme,
@@ -110,93 +111,16 @@ class SmartMedGUI(App):
         self.save_data()
 
     def _zeige_einnahme_popup(self, due, jetzt):
-        """Hilfsfunktion: ziegt ein Popup mit den fälligen Einnahmen an."""
-        wochentage = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
-        tag_kurz = wochentage[jetzt.weekday()]
-        zeit_str = jetzt.strftime('%H:%M')
-
-        zeilen = []
-        for e in due:
-            fach = e.get('fach', '')
-            med = e.get('medikament', '')
-            anzahl = e.get('anzahl', 1)
-            zeilen.append(f"Fach {fach} | {med} (x{anzahl})")
-
-        einnahmen_text = "\n".join(zeilen)
-
-        text = (
-            f"{tag_kurz} {jetzt.strftime('%d.%m.%Y')} {zeit_str}\n\n"
-            f"Folgende Einnahme(n) sind fällig:\n\n"
-            f"{einnahmen_text}"
+        """Zeigt das Einnahme-Popup über das neue UI-Modul an."""
+        show_due_intake_popup(
+            due=due,
+            jetzt=jetzt,
+            on_confirm=lambda: self.bestaetige_einnahmen(due, jetzt),
         )
-
-        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
-
-        label = Label(
-            text=text,
-            halign='center',
-            valign='middle'
-        )
-        label.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
-
-        btn_ok = Button(text='Einnahme bestätigen', size_hint=(1, 0.3))
-
-        layout.add_widget(label)
-        layout.add_widget(btn_ok)
-
-        popup = Popup(
-            title='Einnahme fällig',
-            content=layout,
-            size_hint=(0.85, 0.5),
-            auto_dismiss=False
-        )
-
-        def on_bestaetigen(_instance):
-            self.bestaetige_einnahmen(due, jetzt)
-            popup.dismiss()
-
-        btn_ok.bind(on_press=on_bestaetigen)
-
-        popup.open()
-
+   
     def _zeige_alarm_popup(self, eintrag):
-        """Popup anzeigen, dass ein Alarm gesendet wurde, weil nicht rechtzeitig bestätigt wurde."""
-        fach = eintrag.get('fach', '')
-        med = eintrag.get('medikament', '')
-        anzahl = eintrag.get('anzahl', 1)
-        tag = eintrag.get('tag', '')
-        zeit = eintrag.get('zeit', '')
-
-        text = (
-            'ALARM wurde gesendet!\n\n'
-            'Die Einnahme wurde nicht rechtzeitig bestätigt:\n\n'
-            f"{tag} {zeit} | Fach {fach} | {med} (x{anzahl})"
-        )
-
-        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
-
-        label = Label(
-            text=text,
-            halign='center',
-            valign='middle'
-        )
-        label.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
-
-        btn_ok = Button(text='OK', size_hint=(1, 0.3))
-
-        layout.add_widget(label)
-        layout.add_widget(btn_ok)
-
-        popup = Popup(
-            title='Alarm',
-            content=layout,
-            size_hint=(0.85, 0.5),
-            auto_dismiss=False
-        )
-
-        btn_ok.bind(on_press=popup.dismiss)
-
-        popup.open()
+        """Zeigt das Alarm-Popup über das neue UI-Modul an."""
+        show_alarm_popup(eintrag)
 
     def _auto_pruefen_einnahme(self, dt):
         """Wird regelmässig von Kivy aufgerufen, prüft ob JETZT Einnahmen fällig sind."""
