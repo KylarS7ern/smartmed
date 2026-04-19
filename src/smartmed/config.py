@@ -1,5 +1,17 @@
+import os
 from pathlib import Path
 from kivy.config import Config
+
+
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None or value == "":
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
@@ -8,11 +20,11 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 DATA_FILE = DATA_DIR / "smartmed_plan.json"
 
 # Benachrichtigung / Alarm
-TELEGRAM_BOT_TOKEN = ""
-EMAIL_SMTP_SERVER = "smtp.gmail.com"
-EMAIL_SMTP_PORT = 587
-EMAIL_USERNAME = "smartmedispender@gmail.com"
-EMAIL_PASSWORT = ""
+TELEGRAM_BOT_TOKEN = os.getenv("SMARTMED_TELEGRAM_BOT_TOKEN", "")
+EMAIL_SMTP_SERVER = os.getenv("SMARTMED_EMAIL_SMTP_SERVER", "smtp.gmail.com")
+EMAIL_SMTP_PORT = _env_int("SMARTMED_EMAIL_SMTP_PORT", 587)
+EMAIL_USERNAME = os.getenv("SMARTMED_EMAIL_USERNAME", "smartmedispender@gmail.com")
+EMAIL_PASSWORT = os.getenv("SMARTMED_EMAIL_PASSWORT", "")
 
 # Zielgerät: Raspberry Pi Touch Display 2
 TARGET_SCREEN_WIDTH = 720
