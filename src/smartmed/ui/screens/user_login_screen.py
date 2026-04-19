@@ -7,7 +7,12 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
 
-from smartmed.models.defaults import build_default_user
+from smartmed.services.user_account_service import (
+    create_user_result,
+    list_sorted_usernames,
+    user_requires_password,
+    verify_user_password,
+)
 
 
 class UserLoginScreen(Screen):
@@ -97,7 +102,7 @@ class UserLoginScreen(Screen):
 
         self.user_list_layout.clear_widgets()
 
-        for username in sorted(app.users.keys()):
+        for username in list_sorted_usernames(app.users):
             btn = Button(
                 text=username,
                 size_hint_y=None,
@@ -110,10 +115,7 @@ class UserLoginScreen(Screen):
         """Passwort abfragen (falls gesetzt) und Benutzer einloggen."""
         app = App.get_running_app()
 
-        user = app.users.get(username, {})
-        gespeichertes_pw = user.get('password', '')
-
-        if not gespeichertes_pw:
+        if not user_requires_password(app.users, username):
             app.switch_user(username)
             self.manager.current = 'menu'
             return
@@ -155,12 +157,18 @@ class UserLoginScreen(Screen):
         )
 
         def on_ok(_inst):
-            if pw_input.text == gespeichertes_pw:
+            result = verify_user_password(
+                app.users,
+                username,
+                pw_input.text,
+            )
+
+            if result['ok']:
                 popup.dismiss()
                 app.switch_user(username)
                 app.root.current = 'menu'
             else:
-                label.text = 'Falsches Passwort. Bitte erneut eingeben:'
+                label.text = result['message']
 
         btn_ok.bind(on_press=on_ok)
         btn_cancel.bind(on_press=lambda *_: popup.dismiss())
@@ -213,27 +221,21 @@ class UserLoginScreen(Screen):
         )
 
         def on_ok(_inst):
-            username = name_input.text.strip()
-            password = pw_input.text.strip()
-
-            if not username:
-                lbl_name.text = 'Benutzername darf nicht leer sein. Bitte eingeben:'
-                return
-
-            if username in app.users:
-                lbl_name.text = 'Benutzername existiert bereits. Bitte anderen Namen wählen:'
-                return
-
-            app.users[username] = build_default_user(
-                username=username,
-                password=password,
-                patient_name=username,
-                patient_geburt='-',
+            result = create_user_result(
+                users=app.users,
+                username_text=name_input.text,
+                password_text=pw_input.text,
                 settings=app.settings,
             )
 
+            if not result['ok']:
+                lbl_name.text = result['message']
+                return
+
+            app.users[result['username']] = result['user_data']
+
             popup.dismiss()
-            app.switch_user(username)
+            app.switch_user(result['username'])
             app.root.current = 'menu'
 
         btn_ok.bind(on_press=on_ok)
