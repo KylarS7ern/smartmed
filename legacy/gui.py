@@ -6,7 +6,7 @@ from smartmed.services.user_state_service import load_user_into_app, store_curre
 from smartmed.services.app_persistence_service import apply_loaded_data, build_data_to_save
 from smartmed.services.event_log_service import append_log_entry
 from smartmed.services.notification_service import send_alarm_notifications_for_settings
-
+from smartmed.services.alarm_workflow_service import collect_overdue_alarm_actions
 
 
 from smartmed.models.defaults import build_default_settings, build_default_user, build_default_app_state
@@ -30,8 +30,6 @@ from smartmed.services.schedule_service import (
     bestaetige_offene_einnahmen,
     erstelle_offene_einnahmen,
     finde_faellige_einnahmen,
-    finde_ueberfaellige_offene_einnahmen,
-    markiere_ueberfaellige_offene_einnahmen,
 )
 
 
@@ -234,23 +232,13 @@ class SmartMedGUI(App):
     
     def _check_overdue_einnahme(self, dt):
         """Überprüft offene Einnahmen, ob sie überfällig sind, und löst ggf. Alarm aus."""
-        if not self.offene_einnahmen:
-            return
-
-        ueberfaellige, _ = finde_ueberfaellige_offene_einnahmen(
-            self.offene_einnahmen
-        )
-
-        if not ueberfaellige:
-            return
-
-        verarbeitete = markiere_ueberfaellige_offene_einnahmen(ueberfaellige)
+        verarbeitete = collect_overdue_alarm_actions(self.offene_einnahmen)
 
         if not verarbeitete:
             return
 
         self._verarbeite_ueberfaellige_einnahmen(verarbeitete)
-        
+
     def _verarbeite_ueberfaellige_einnahmen(self, verarbeitete):
         """Führt die Seiteneffekte für bereits fachlich verarbeitete Alarme aus."""
         if not verarbeitete:
