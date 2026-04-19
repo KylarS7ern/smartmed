@@ -6,8 +6,10 @@ from smartmed.services.user_state_service import load_user_into_app, store_curre
 from smartmed.services.app_persistence_service import apply_loaded_data, build_data_to_save
 from smartmed.services.event_log_service import append_log_entry
 from smartmed.services.notification_service import send_alarm_notifications_for_settings
-from smartmed.services.alarm_workflow_service import collect_overdue_alarm_actions
-
+from smartmed.services.alarm_workflow_service import (
+    collect_overdue_alarm_actions,
+    process_overdue_alarm_actions,
+)
 
 from smartmed.models.defaults import build_default_settings, build_default_user, build_default_app_state
 
@@ -240,18 +242,11 @@ class SmartMedGUI(App):
         self._verarbeite_ueberfaellige_einnahmen(verarbeitete)
 
     def _verarbeite_ueberfaellige_einnahmen(self, verarbeitete):
-        """Führt die Seiteneffekte für bereits fachlich verarbeitete Alarme aus."""
-        if not verarbeitete:
-            return
-
-        for item in verarbeitete:
-            self._loese_nicht_bestaetigt_alarm_aus(
-                eintrag=item['eintrag'],
-                console_text=item['console_text'],
-                log_text=item['log_text'],
-            )
-
-        self.save_data()
+        """Verarbeitet überfällige Einnahmen und löst Alarm-Aktionen aus."""
+        process_overdue_alarm_actions(
+            verarbeitete,
+            trigger_alarm_callback=self._loese_nicht_bestaetigt_alarm_aus,
+        )
         
     def sende_alarm_benachrichtigungen(self, eintrag):
         """Alarm-Benachrichtigungen gemäss aktuellen Einstellungen senden."""

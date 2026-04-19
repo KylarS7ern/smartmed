@@ -15,3 +15,16 @@ def collect_overdue_alarm_actions(offene_einnahmen: list) -> list[dict]:
         return []
 
     return markiere_ueberfaellige_offene_einnahmen(ueberfaellige)
+
+def process_overdue_alarm_actions(
+    verarbeitete: list,
+    trigger_alarm_callback,
+) -> None:
+    """Verarbeitet vorbereitete Alarm-Aktionen durch Aufruf des übergebenen Callbacks."""
+    for eintrag in verarbeitete:
+        trigger_alarm_callback(
+            eintrag,
+            console_text="ALARM: Einnahme NICHT bestätigt!",
+            log_text="ALARM ausgelöst: Einnahme nicht bestätigt",
+        )
+        
