@@ -5,11 +5,9 @@ from smartmed.services.storage_service import load_json_data, save_json_data
 from smartmed.services.user_state_service import load_user_into_app, store_current_user_state
 from smartmed.services.app_persistence_service import apply_loaded_data, build_data_to_save
 from smartmed.services.event_log_service import append_log_entry
+from smartmed.services.intake_workflow_service import prepare_due_intake_workflow
 from smartmed.services.notification_service import send_alarm_notifications_for_settings
-from smartmed.services.alarm_workflow_service import (
-    collect_overdue_alarm_actions,
-    process_overdue_alarm_actions,
-)
+from smartmed.services.alarm_workflow_service import (collect_overdue_alarm_actions, process_overdue_alarm_actions,)
 
 from smartmed.models.defaults import build_default_settings, build_default_user, build_default_app_state
 
@@ -27,13 +25,9 @@ from smartmed.ui.screens.plan_edit_screen import PlanEintragErfassenScreen
 from smartmed.ui.screen_factory import build_screen_manager
 
 from smartmed.services.schedule_service import (
-    berechne_alarm_delay_minuten,
     berechne_naechste_einnahme,
-    bestaetige_offene_einnahmen,
-    erstelle_offene_einnahmen,
-    finde_faellige_einnahmen,
+    bestaetige_offene_einnahmen,    
 )
-
 
 
 from kivy.app import App
@@ -201,37 +195,20 @@ class SmartMedGUI(App):
 
     def _auto_pruefen_einnahme(self, dt):
         """Wird regelmässig von Kivy aufgerufen, prüft ob JETZT Einnahmen fällig sind."""
-        if not self.plan_eintraege:
-            return
-
-        due, jetzt, minute_key, tag_kurz, zeit_str = finde_faellige_einnahmen(
-            self.plan_eintraege
-        )
-
-        if getattr(self, '_last_popup_minute', None) == minute_key:
-            return
-
-        if not due:
-            return
-
-        self._last_popup_minute = minute_key
-
-        delay_min = berechne_alarm_delay_minuten(
-            self.settings.get('alarm_delay_min', 30)
-        )
-
-        neue_offene = erstelle_offene_einnahmen(
-            due=due,
+        result = prepare_due_intake_workflow(
+            plan_eintraege=self.plan_eintraege,
             offene_einnahmen=self.offene_einnahmen,
-            jetzt=jetzt,
-            delay_min=delay_min,
-            tag_kurz=tag_kurz,
-            zeit_str=zeit_str,
+            settings=self.settings,
+            last_popup_minute=getattr(self, "_last_popup_minute", None),
         )
-        self.offene_einnahmen.extend(neue_offene)
 
-        self._zeige_einnahme_popup(due, jetzt)
-    
+        if not result:
+            return
+
+        self._last_popup_minute = result["minute_key"]
+        self.offene_einnahmen.extend(result["neue_offene"])
+        self._zeige_einnahme_popup(result["due"], result["jetzt"])
+        
     def _check_overdue_einnahme(self, dt):
         """Überprüft offene Einnahmen, ob sie überfällig sind, und löst ggf. Alarm aus."""
         verarbeitete = collect_overdue_alarm_actions(self.offene_einnahmen)
