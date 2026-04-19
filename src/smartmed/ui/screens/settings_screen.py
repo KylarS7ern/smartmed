@@ -8,10 +8,11 @@ from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
 
 from smartmed.ui.navigation import go_to_settings_menu
-from smartmed.services.alarm_settings_service import (
-    build_alarm_settings_form_data,
-    build_alarm_settings_update,
-    resolve_email_for_recipient_choice,
+from smartmed.services.alarm_settings_app_service import (
+    build_alarm_settings_screen_data,
+    resolve_alarm_email_for_app,
+    save_alarm_settings_from_form,
+    send_alarm_test_notification,
 )
 
 class SettingsScreen(Screen):
@@ -174,10 +175,13 @@ class SettingsScreen(Screen):
 
         self.add_widget(layout)
 
+    @staticmethod
+    def _app():
+        return App.get_running_app()
+
     def on_pre_enter(self, *args):
         """Aktuelle Einstellungen ins UI laden, wenn Screen angezeigt wird."""
-        app = App.get_running_app()
-        form_data = build_alarm_settings_form_data(app.settings)
+        form_data = build_alarm_settings_screen_data(self._app())
 
         self.alarm_delay_input.text = form_data['alarm_delay_text']
         self.alarm_mode_spinner.text = form_data['alarm_mode_text']
@@ -237,34 +241,22 @@ class SettingsScreen(Screen):
 
     def on_email_recipient_changed(self, spinner, value):
         """Wenn Empfänger-Auswahl geändert wird, passende Adresse einsetzen."""
-        app = App.get_running_app()
-
-        self.email_to_input.text = resolve_email_for_recipient_choice(
-            value,
-            doctor_email=getattr(app, 'doctor_email', ''),
-            contact1_email=getattr(app, 'contact1_email', ''),
-            contact2_email=getattr(app, 'contact2_email', ''),
+        self.email_to_input.text = resolve_alarm_email_for_app(
+            self._app(),
+            recipient_choice=value,
             current_email=self.email_to_input.text,
         )
 
     def sende_testnachricht(self, instance):
-        app = App.get_running_app()
-
+        app = self._app()
         self.speichern_einstellungen(instance)
-
-        dummy_eintrag = {
-            'tag': 'Mo',
-            'zeit': '12:00',
-            'fach': '1',
-            'medikament': 'Test-Medikament',
-            'anzahl': 1,
-        }
-        app.sende_alarm_benachrichtigungen(dummy_eintrag)
+        send_alarm_test_notification(app)
 
     def speichern_einstellungen(self, instance):
-        app = App.get_running_app()
+        app = self._app()
 
-        result = build_alarm_settings_update(
+        result = save_alarm_settings_from_form(
+            app,
             alarm_delay_text=self.alarm_delay_input.text,
             alarm_mode_text=self.alarm_mode_spinner.text,
             notify_text=self.notify_spinner.text,
@@ -273,14 +265,10 @@ class SettingsScreen(Screen):
             email_recipient_text=self.email_recipients_spinner.text,
         )
 
-        app.settings.update(result['settings_update'])
-        app.save_data()
-
         if result['warning']:
             print(result['warning'])
 
         print('Alarm-Einstellungen gespeichert:', app.settings)
 
     def zurueck_zum_menue(self, instance):
-        app = App.get_running_app()
-        go_to_settings_menu(app)
+        go_to_settings_menu(self._app())
