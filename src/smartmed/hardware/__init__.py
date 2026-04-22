@@ -1,0 +1,1 @@
+# Hardware-nahe Module für Arduino-/Gerätekommunikation.

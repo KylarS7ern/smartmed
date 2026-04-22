@@ -12,7 +12,15 @@ def _env_int(name: str, default: int) -> int:
     except ValueError:
         return default
 
-
+def _env_float(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if value is None or value == "":
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        return default
+    
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -34,6 +42,11 @@ TARGET_SCREEN_ORIENTATION = "portrait"
 APP_WINDOW_WIDTH = TARGET_SCREEN_WIDTH
 APP_WINDOW_HEIGHT = TARGET_SCREEN_HEIGHT
 APP_WINDOW_RESIZABLE = False
+
+# Arduino / serielle Kommunikation
+ARDUINO_PORT = os.getenv("SMARTMED_ARDUINO_PORT", "/dev/ttyACM0")
+ARDUINO_BAUDRATE = _env_int("SMARTMED_ARDUINO_BAUDRATE", 115200)
+ARDUINO_TIMEOUT = _env_float("SMARTMED_ARDUINO_TIMEOUT", 1.0)
 
 # Muss vor den restlichen Kivy-Imports angewendet werden
 Config.set("graphics", "width", str(APP_WINDOW_WIDTH))
