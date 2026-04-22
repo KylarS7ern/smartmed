@@ -1,6 +1,8 @@
+import code
+
 from smartmed.hardware.protocol import build_dispense_command, build_ping_command
 from smartmed.hardware.serial_transport import ArduinoSerialError
-
+from smartmed.hardware.slot_config import get_slot_label
 
 def _format_device_error(code: str, *, slot: int | None = None, count: int | None = None) -> str:
     if code == "INVALID_SLOT":
@@ -8,9 +10,9 @@ def _format_device_error(code: str, *, slot: int | None = None, count: int | Non
     if code == "INVALID_COUNT":
         return "Ungültige Anzahl."
     if code == "SLOT_NOT_ENABLED":
-        return f"Fach {slot} ist auf dem Arduino noch nicht aktiviert."
+        return f"{get_slot_label(slot)} ist auf dem Arduino noch nicht aktiviert."
     if code == "DISPENSE_FAILED":
-        return f"Ausgabe für Fach {slot} konnte nicht ausgeführt werden."
+        return f"Ausgabe für {get_slot_label(slot)} konnte nicht ausgeführt werden."
     if code == "INVALID_FORMAT":
         return "Arduino hat ein ungültiges Befehlsformat erkannt."
     if code == "UNKNOWN_COMMAND":
@@ -76,7 +78,7 @@ def dispense_slot(transport, *, slot: int, count: int = 1) -> dict:
             "kind": "dispense",
             "slot": slot,
             "count": count,
-            "message": f"Fach {slot} wurde {count}x erfolgreich angesteuert.",
+            "message": f"{get_slot_label(slot)} wurde {count}x erfolgreich angesteuert.",
             "response": response,
         }
 

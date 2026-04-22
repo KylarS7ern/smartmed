@@ -7,6 +7,7 @@ from kivy.uix.textinput import TextInput
 from kivy.clock import Clock
 from threading import Thread
 
+from smartmed.hardware.slot_config import get_slot_label
 from smartmed.ui.navigation import go_to_settings_menu
 from smartmed.services.admin_pin_service import (
     build_admin_pin_status_text,
@@ -97,19 +98,19 @@ class AdvancedSettingsScreen(Screen):
         btn_save_pin.bind(on_press=self.speichern_pin)
 
         btn_test_fach_1 = Button(
-            text='Hardware-Test: Fach 1 einmal ausgeben',
+            text=f'Hardware-Test: {get_slot_label(1)} einmal ausgeben',
             size_hint=(1, 0.12)
         )
         btn_test_fach_1.bind(on_press=self.hardware_test_fach_1)
 
         btn_test_fach_2 = Button(
-            text='Hardware-Test: Fach 2 einmal ausgeben',
+            text=f'Hardware-Test: {get_slot_label(2)} einmal ausgeben',
             size_hint=(1, 0.12)
         )
         btn_test_fach_2.bind(on_press=self.hardware_test_fach_2)
 
         btn_test_fach_3 = Button(
-            text='Hardware-Test: Fach 3 einmal ausgeben',
+            text=f'Hardware-Test: {get_slot_label(3)} einmal ausgeben',
             size_hint=(1, 0.12)
         )
         btn_test_fach_3.bind(on_press=self.hardware_test_fach_3)
@@ -175,7 +176,7 @@ class AdvancedSettingsScreen(Screen):
     def hardware_test_fach(self, fach: int):
         self._set_hardware_test_buttons_enabled(False)
         self.hardware_test_label.text = (
-            f'Hardware-Test für Fach {fach} startet in 1 Sekunde...'
+            f'Hardware-Test für {get_slot_label(fach)} startet in 1 Sekunde...'
         )
         Clock.schedule_once(
             lambda dt: self._starte_hardware_test_im_hintergrund(fach),
