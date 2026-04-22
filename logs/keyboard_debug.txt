@@ -2,14 +2,3 @@
 [SmartMed] set_vkeyboard_class(BigVKeyboard)
 [SmartMed] create_app() wird aufgerufen
 [SmartMed] app.run() startet
-[SmartMed] BigVKeyboard __init__ gestartet
-[SmartMed] BigVKeyboard nach __init__: size=[700, 200], scale=1.0, docked=False
-[SmartMed] setup_mode_dock VORHER: size=[700, 200], scale=1.0
-[SmartMed] setup_mode_dock NACHHER: size=[500, 300], scale=1.44, effective_height=432.0
-[SmartMed] setup_mode_dock VORHER: size=[500, 300], scale=1.44
-[SmartMed] setup_mode_dock NACHHER: size=[500, 300], scale=1.44, effective_height=432.0
-[SmartMed] setup_mode_dock VORHER: size=[500, 300], scale=1.44
-[SmartMed] setup_mode_dock NACHHER: size=[500, 300], scale=1.44, effective_height=432.0
-[SmartMed] setup_mode_dock VORHER: size=[500, 300], scale=1.44
-[SmartMed] setup_mode_dock NACHHER: size=[500, 300], scale=1.44, effective_height=432.0
-[SmartMed] app.run() beendet
