@@ -2,6 +2,7 @@ from smartmed.config import DATA_FILE
 
 from smartmed.hardware.serial_transport import ArduinoSerialTransport
 
+from smartmed.services.hardware_test_workflow_service import run_hardware_test
 from smartmed.services.dispense_service import dispense_slot, ping_arduino
 from smartmed.services.storage_service import load_json_data, save_json_data
 from smartmed.services.user_state_service import load_user_into_app, store_current_user_state
