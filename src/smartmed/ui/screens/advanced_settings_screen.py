@@ -44,6 +44,16 @@ class AdvancedSettingsScreen(Screen):
         )
         self.pin_info_label.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
 
+        self.hardware_test_label = Label(
+            text='Hardware-Test noch nicht ausgeführt.',
+            halign='center',
+            valign='middle',
+            size_hint=(1, 0.1)
+        )
+        self.hardware_test_label.bind(
+            size=lambda inst, val: setattr(inst, 'text_size', val)
+        )
+
         pin_layout1 = BoxLayout(
             orientation='horizontal',
             spacing=10,
@@ -84,6 +94,12 @@ class AdvancedSettingsScreen(Screen):
         )
         btn_save_pin.bind(on_press=self.speichern_pin)
 
+        btn_test_hardware = Button(
+            text='Hardware-Test: Fach 1 einmal ausgeben',
+            size_hint=(1, 0.15)
+        )
+        btn_test_hardware.bind(on_press=self.hardware_test_fach_1)
+
         btn_back = Button(
             text='Zurück',
             size_hint=(1, 0.15)
@@ -93,9 +109,11 @@ class AdvancedSettingsScreen(Screen):
         layout.add_widget(titel)
         layout.add_widget(info)
         layout.add_widget(self.pin_info_label)
+        layout.add_widget(self.hardware_test_label)
         layout.add_widget(pin_layout1)
         layout.add_widget(pin_layout2)
         layout.add_widget(btn_save_pin)
+        layout.add_widget(btn_test_hardware)
         layout.add_widget(btn_back)
 
         self.add_widget(layout)
@@ -108,6 +126,7 @@ class AdvancedSettingsScreen(Screen):
         )
         self.pin_input.text = ''
         self.pin_repeat_input.text = ''
+        self.hardware_test_label.text = 'Hardware-Test noch nicht ausgeführt.'
 
     def speichern_pin(self, instance):
         """Admin-PIN speichern oder entfernen."""
@@ -125,6 +144,14 @@ class AdvancedSettingsScreen(Screen):
         app.admin_pin = result['admin_pin']
         app.save_data()
         self.pin_info_label.text = result['message']
+
+    def hardware_test_fach_1(self, instance):
+        app = App.get_running_app()
+        result = app.fuehre_hardware_test_aus(fach=1, anzahl=1)
+        self.hardware_test_label.text = result.get(
+            'message',
+            'Unbekanntes Ergebnis beim Hardware-Test.'
+        )
 
     def zurueck(self, instance):
         app = App.get_running_app()
