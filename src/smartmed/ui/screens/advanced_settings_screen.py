@@ -94,11 +94,23 @@ class AdvancedSettingsScreen(Screen):
         )
         btn_save_pin.bind(on_press=self.speichern_pin)
 
-        btn_test_hardware = Button(
+        btn_test_fach_1 = Button(
             text='Hardware-Test: Fach 1 einmal ausgeben',
-            size_hint=(1, 0.15)
+            size_hint=(1, 0.12)
         )
-        btn_test_hardware.bind(on_press=self.hardware_test_fach_1)
+        btn_test_fach_1.bind(on_press=self.hardware_test_fach_1)
+
+        btn_test_fach_2 = Button(
+            text='Hardware-Test: Fach 2 einmal ausgeben',
+            size_hint=(1, 0.12)
+        )
+        btn_test_fach_2.bind(on_press=self.hardware_test_fach_2)
+
+        btn_test_fach_3 = Button(
+            text='Hardware-Test: Fach 3 einmal ausgeben',
+            size_hint=(1, 0.12)
+        )
+        btn_test_fach_3.bind(on_press=self.hardware_test_fach_3)
 
         btn_back = Button(
             text='Zurück',
@@ -113,7 +125,9 @@ class AdvancedSettingsScreen(Screen):
         layout.add_widget(pin_layout1)
         layout.add_widget(pin_layout2)
         layout.add_widget(btn_save_pin)
-        layout.add_widget(btn_test_hardware)
+        layout.add_widget(btn_test_fach_1)
+        layout.add_widget(btn_test_fach_2)
+        layout.add_widget(btn_test_fach_3)
         layout.add_widget(btn_back)
 
         self.add_widget(layout)
@@ -153,6 +167,42 @@ class AdvancedSettingsScreen(Screen):
             'Unbekanntes Ergebnis beim Hardware-Test.'
         )
 
+    def speichern_pin(self, instance):
+        """Admin-PIN speichern oder entfernen."""
+        app = App.get_running_app()
+
+        result = build_admin_pin_update(
+            self.pin_input.text,
+            self.pin_repeat_input.text,
+        )
+
+        if not result['ok']:
+            self.pin_info_label.text = result['message']
+            return
+
+        app.admin_pin = result['admin_pin']
+        app.save_data()
+        self.pin_info_label.text = result['message']
+
+    def hardware_test_fach(self, fach: int):
+        app = App.get_running_app()
+        result = app.fuehre_hardware_test_aus(fach=fach, anzahl=1)
+        self.hardware_test_label.text = result.get(
+            'message',
+            'Unbekanntes Ergebnis beim Hardware-Test.'
+        )
+
+    def hardware_test_fach_1(self, instance):
+        self.hardware_test_fach(1)
+
+    def hardware_test_fach_2(self, instance):
+        self.hardware_test_fach(2)
+
+    def hardware_test_fach_3(self, instance):
+        self.hardware_test_fach(3)
+
     def zurueck(self, instance):
+        app = App.get_running_app()
+        go_to_settings_menu(app)
         app = App.get_running_app()
         go_to_settings_menu(app)
