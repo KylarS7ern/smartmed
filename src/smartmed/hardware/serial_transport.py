@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import serial
+import time
 from serial import SerialException
 
 from smartmed.config import (
@@ -43,6 +44,10 @@ class ArduinoSerialTransport:
                 write_timeout=self.config.timeout,
             )
 
+            # Arduino Leonardo resettet oft beim Öffnen der USB-Serial-Verbindung.
+            # Deshalb kurz warten, bis der Sketch wieder bereit ist.
+            time.sleep(2.0)
+
             self._serial.reset_input_buffer()
             self._serial.reset_output_buffer()
 
@@ -53,8 +58,12 @@ class ArduinoSerialTransport:
 
     def close(self) -> None:
         if self._serial is not None:
-            self._serial.close()
-            self._serial = None
+            try:
+                self._serial.close()
+            except Exception:
+                pass
+            finally:
+                self._serial = None
 
     def transact(self, command: str) -> dict:
         if not command.endswith("\n"):
@@ -69,8 +78,10 @@ class ArduinoSerialTransport:
             self._serial.flush()
             raw = self._serial.readline().decode("utf-8", errors="replace")
         except SerialException as exc:
-            raise ArduinoSerialError("Serielle Kommunikation fehlgeschlagen.") from exc
-
+            raise ArduinoSerialError(
+                f"Serielle Kommunikation fehlgeschlagen: {exc!r}"
+            ) from exc
+        
         response = parse_response(raw)
 
         if response["kind"] == "empty":

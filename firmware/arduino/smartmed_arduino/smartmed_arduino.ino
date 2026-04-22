@@ -31,21 +31,17 @@ void setup() {
       continue;
     }
 
+    digitalWrite(EN_PINS[i], HIGH);
+    pinMode(EN_PINS[i], OUTPUT);
+
     pinMode(STEP_PINS[i], OUTPUT);
     pinMode(DIR_PINS[i], OUTPUT);
-    pinMode(EN_PINS[i], OUTPUT);
 
     digitalWrite(STEP_PINS[i], LOW);
     digitalWrite(DIR_PINS[i], LOW);
-    digitalWrite(EN_PINS[i], HIGH);  // DRV8825: HIGH = deaktiviert, LOW = aktiviert
-  }
-
-  // Leonardo braucht manchmal einen kurzen Moment für Serial über USB
-  unsigned long start = millis();
-  while (!Serial && (millis() - start < 4000)) {
-    // warten
   }
 }
+
 
 void loop() {
   while (Serial.available() > 0) {
