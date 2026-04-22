@@ -105,6 +105,44 @@ class SmartMedGUI(App):
     def teste_ausgabe_hardware(self, fach: int, anzahl: int = 1):
         return dispense_slot(self.arduino_transport, slot=fach, count=anzahl)
 
+    def fuehre_hardware_test_aus(self, fach: int = 1, anzahl: int = 1):
+        ping_result = self.ping_arduino_hardware()
+        if not ping_result.get("ok"):
+            message = ping_result.get("message", "Arduino nicht erreichbar.")
+            self.log_event(f"Hardware-Test fehlgeschlagen: {message}")
+            return {
+                "ok": False,
+                "kind": "ping_failed",
+                "message": message,
+                "ping_result": ping_result,
+            }
+
+        dispense_result = self.teste_ausgabe_hardware(fach=fach, anzahl=anzahl)
+        if dispense_result.get("ok"):
+            self.log_event(
+                f"Hardware-Test erfolgreich: Fach {fach}, Anzahl {anzahl}."
+            )
+            return {
+                "ok": True,
+                "kind": "hardware_test_success",
+                "message": f"Hardware-Test erfolgreich für Fach {fach}.",
+                "ping_result": ping_result,
+                "dispense_result": dispense_result,
+            }
+
+        message = dispense_result.get("message", "Unbekannter Hardware-Fehler.")
+        self.log_event(
+            f"Hardware-Test fehlgeschlagen bei Fach {fach}, Anzahl {anzahl}: {message}"
+        )
+        return {
+            "ok": False,
+            "kind": "dispense_failed",
+            "message": message,
+            "ping_result": ping_result,
+            "dispense_result": dispense_result,
+        }
+
+
     def naechste_einnahme(self):
         """Gibt (eintrag, datetime) für die nächste geplante Einnahme zurück."""
         return berechne_naechste_einnahme(self.plan_eintraege)
