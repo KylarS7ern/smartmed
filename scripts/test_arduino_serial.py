@@ -1,8 +1,5 @@
-from smartmed.hardware.protocol import build_dispense_command, build_ping_command
-from smartmed.hardware.serial_transport import (
-    ArduinoSerialError,
-    ArduinoSerialTransport,
-)
+from smartmed.hardware.serial_transport import ArduinoSerialTransport
+from smartmed.services.dispense_service import dispense_slot, ping_arduino
 
 
 def main() -> None:
@@ -10,15 +7,12 @@ def main() -> None:
 
     try:
         print("Sende PING ...")
-        ping_response = transport.transact(build_ping_command())
-        print("Antwort auf PING:", ping_response)
+        ping_result = ping_arduino(transport)
+        print("PING-Ergebnis:", ping_result)
 
         print("Sende DISPENSE 1 1 ...")
-        dispense_response = transport.transact(build_dispense_command(1, 1))
-        print("Antwort auf DISPENSE:", dispense_response)
-
-    except ArduinoSerialError as exc:
-        print("ArduinoSerialError:", exc)
+        dispense_result = dispense_slot(transport, slot=1, count=1)
+        print("DISPENSE-Ergebnis:", dispense_result)
 
     finally:
         transport.close()
@@ -26,4 +20,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    
