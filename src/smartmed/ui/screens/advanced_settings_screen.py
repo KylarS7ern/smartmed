@@ -4,6 +4,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
+from kivy.clock import Clock
 
 from smartmed.ui.navigation import go_to_settings_menu
 from smartmed.services.admin_pin_service import (
@@ -159,32 +160,16 @@ class AdvancedSettingsScreen(Screen):
         app.save_data()
         self.pin_info_label.text = result['message']
 
-    def hardware_test_fach_1(self, instance):
-        app = App.get_running_app()
-        result = app.fuehre_hardware_test_aus(fach=1, anzahl=1)
-        self.hardware_test_label.text = result.get(
-            'message',
-            'Unbekanntes Ergebnis beim Hardware-Test.'
-        )
-
-    def speichern_pin(self, instance):
-        """Admin-PIN speichern oder entfernen."""
-        app = App.get_running_app()
-
-        result = build_admin_pin_update(
-            self.pin_input.text,
-            self.pin_repeat_input.text,
-        )
-
-        if not result['ok']:
-            self.pin_info_label.text = result['message']
-            return
-
-        app.admin_pin = result['admin_pin']
-        app.save_data()
-        self.pin_info_label.text = result['message']
-
     def hardware_test_fach(self, fach: int):
+        self.hardware_test_label.text = (
+            f'Hardware-Test für Fach {fach} startet in 1 Sekunde...'
+        )
+        Clock.schedule_once(
+            lambda dt: self._starte_hardware_test(fach),
+            1.0
+        )
+
+    def _starte_hardware_test(self, fach: int):
         app = App.get_running_app()
         result = app.fuehre_hardware_test_aus(fach=fach, anzahl=1)
         self.hardware_test_label.text = result.get(
@@ -202,7 +187,5 @@ class AdvancedSettingsScreen(Screen):
         self.hardware_test_fach(3)
 
     def zurueck(self, instance):
-        app = App.get_running_app()
-        go_to_settings_menu(app)
         app = App.get_running_app()
         go_to_settings_menu(app)
