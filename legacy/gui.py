@@ -1,6 +1,8 @@
 from smartmed.config import DATA_FILE
 
+from smartmed.hardware.serial_transport import ArduinoSerialTransport
 
+from smartmed.services.dispense_service import dispense_slot, ping_arduino
 from smartmed.services.storage_service import load_json_data, save_json_data
 from smartmed.services.user_state_service import load_user_into_app, store_current_user_state
 from smartmed.services.app_persistence_service import apply_loaded_data, build_data_to_save
@@ -29,6 +31,8 @@ from smartmed.ui.screens.plan_edit_screen import PlanEintragErfassenScreen
 from smartmed.ui.screen_factory import build_screen_manager
 from smartmed.ui.popups import show_due_intake_popup, show_alarm_popup
 
+
+
 from smartmed.services.schedule_service import (
     berechne_naechste_einnahme,
     bestaetige_offene_einnahmen,    
@@ -55,6 +59,8 @@ class SmartMedGUI(App):
         for key, value in state.items():
             setattr(self, key, value)
         
+        self.arduino_transport = ArduinoSerialTransport()
+
         self.load_data()
 
     def switch_user(self, username):
@@ -92,6 +98,12 @@ class SmartMedGUI(App):
         """Fügt einen Log-Eintrag hinzu und speichert die Daten."""
         append_log_entry(self.log_eintraege, text)
         self.save_data()
+
+    def ping_arduino_hardware(self):
+        return ping_arduino(self.arduino_transport)
+
+    def teste_ausgabe_hardware(self, fach: int, anzahl: int = 1):
+        return dispense_slot(self.arduino_transport, slot=fach, count=anzahl)
 
     def naechste_einnahme(self):
         """Gibt (eintrag, datetime) für die nächste geplante Einnahme zurück."""
@@ -181,6 +193,6 @@ class SmartMedGUI(App):
         Clock.schedule_interval(self._check_overdue_einnahme, 60.0)
 
         return sm
-    
+
 if __name__ == '__main__':
     SmartMedGUI().run()
