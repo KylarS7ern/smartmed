@@ -1,1 +1,0 @@
-# Legacy-Prototyp als vorläufig importierbares Paket.
