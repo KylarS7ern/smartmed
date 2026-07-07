@@ -1,3 +1,6 @@
+from smartmed.services.security_service import hash_secret, is_hashed, verify_secret
+
+
 def has_admin_pin(admin_pin):
     """Prüft, ob überhaupt ein Admin-PIN gesetzt ist."""
     return bool((admin_pin or '').strip())
@@ -11,24 +14,33 @@ def build_admin_pin_status_text(admin_pin):
 
 
 def verify_admin_pin(admin_pin, entered_pin_text):
-    """Prüft eine eingegebene PIN gegen die gespeicherte PIN."""
+    """Prüft eine eingegebene PIN gegen die gespeicherte (gehashte oder alte Klartext-) PIN."""
     gespeicherte_pin = (admin_pin or '').strip()
     eingegebene_pin = (entered_pin_text or '').strip()
 
-    if eingegebene_pin == gespeicherte_pin:
+    if not gespeicherte_pin:
         return {
             'ok': True,
             'message': '',
+            'needs_rehash': False,
+        }
+
+    if verify_secret(gespeicherte_pin, eingegebene_pin):
+        return {
+            'ok': True,
+            'message': '',
+            'needs_rehash': not is_hashed(gespeicherte_pin),
         }
 
     return {
         'ok': False,
         'message': 'Falscher PIN. Bitte erneut eingeben:',
+        'needs_rehash': False,
     }
 
 
 def build_admin_pin_update(pin1_text, pin2_text):
-    """Validiert neue PIN-Eingaben und bereitet das Update vor."""
+    """Validiert neue PIN-Eingaben und bereitet das (gehashte) Update vor."""
     pin1 = (pin1_text or '').strip()
     pin2 = (pin2_text or '').strip()
 
@@ -55,6 +67,6 @@ def build_admin_pin_update(pin1_text, pin2_text):
 
     return {
         'ok': True,
-        'admin_pin': pin1,
+        'admin_pin': hash_secret(pin1),
         'message': 'Admin-PIN wurde gespeichert.',
     }

@@ -1,5 +1,3 @@
-import code
-
 from smartmed.hardware.protocol import build_dispense_command, build_ping_command
 from smartmed.hardware.serial_transport import ArduinoSerialError
 from smartmed.hardware.slot_config import get_slot_label
@@ -83,7 +81,7 @@ def dispense_slot(transport, *, slot: int, count: int = 1) -> dict:
         }
 
     if response.get("kind") == "error":
-        code = response.get("code", "UNKNOWN")
+        code = response.get("code", "UNBEKANNT")
         return {
             "ok": False,
             "kind": "device_error",
@@ -98,3 +96,41 @@ def dispense_slot(transport, *, slot: int, count: int = 1) -> dict:
         "message": "Unerwartete Antwort auf DISPENSE.",
         "response": response,
     }
+
+
+def dispense_due_entries(transport, due: list) -> dict:
+    """Löst für jeden fälligen Plan-Eintrag die Hardware-Ausgabe aus.
+
+    Gibt {"dispensed": [...], "failed": [...]} zurück. Jeder Eintrag enthält
+    den ursprünglichen Plan-Eintrag ('eintrag') sowie das Dispense-Ergebnis
+    ('result'). Ein Fehler bei einem Fach bricht die übrigen fälligen
+    Einträge nicht ab.
+    """
+    dispensed = []
+    failed = []
+
+    for eintrag in due:
+        fach_raw = eintrag.get("fach", "")
+        anzahl = eintrag.get("anzahl", 1)
+
+        try:
+            slot = int(fach_raw)
+        except (TypeError, ValueError):
+            failed.append({
+                "eintrag": eintrag,
+                "result": {
+                    "ok": False,
+                    "kind": "validation_error",
+                    "message": f"Ungültiges Fach '{fach_raw}' im Plan-Eintrag.",
+                },
+            })
+            continue
+
+        result = dispense_slot(transport, slot=slot, count=anzahl)
+
+        if result.get("ok"):
+            dispensed.append({"eintrag": eintrag, "result": result})
+        else:
+            failed.append({"eintrag": eintrag, "result": result})
+
+    return {"dispensed": dispensed, "failed": failed}

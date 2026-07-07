@@ -1,11 +1,14 @@
 import unittest
-from datetime import datetime
+from datetime import date, datetime
 
 from smartmed.services.schedule_service import (
+    bereinige_offene_einnahmen,
     berechne_alarm_delay_minuten,
     berechne_naechste_einnahme,
+    bestaetige_offene_einnahmen,
     erstelle_offene_einnahmen,
     finde_faellige_einnahmen,
+    ist_eintrag_faellig_am,
 )
 
 
@@ -33,7 +36,7 @@ class ScheduleServiceTests(unittest.TestCase):
         due = [{"tag": "Mo", "zeit": "08:30", "fach": "1", "medikament": "A", "anzahl": 1}]
         existing = [
             {
-                "key": ("Mo", "08:30", "1", "A"),
+                "key": ("Mo", "08:30", "1", "A", "2026-04-20"),
                 "bestaetigt": False,
             }
         ]
@@ -64,6 +67,159 @@ class ScheduleServiceTests(unittest.TestCase):
         self.assertEqual(berechne_alarm_delay_minuten("abc"), 30)
         self.assertEqual(berechne_alarm_delay_minuten(0), 30)
         self.assertEqual(berechne_alarm_delay_minuten(15), 15)
+
+    def test_bestaetige_offene_einnahmen_reports_no_late_confirmation_normally(self):
+        due = [{"tag": "Mo", "zeit": "08:30", "fach": "1", "medikament": "A", "anzahl": 1}]
+        offene = [
+            {
+                "key": ("Mo", "08:30", "1", "A", "2026-04-20"),
+                "bestaetigt": False,
+                "alarm_verschickt": False,
+            }
+        ]
+
+        result = bestaetige_offene_einnahmen(due, offene, datetime(2026, 4, 20, 8, 31))
+
+        self.assertEqual(len(result["log_texte"]), 1)
+        self.assertEqual(result["verspaetet_bestaetigt"], [])
+        self.assertTrue(offene[0]["bestaetigt"])
+
+    def test_bestaetige_offene_einnahmen_detects_late_confirmation_after_alarm(self):
+        due = [{"tag": "Mo", "zeit": "08:30", "fach": "1", "medikament": "A", "anzahl": 1}]
+        offene = [
+            {
+                "key": ("Mo", "08:30", "1", "A", "2026-04-20"),
+                "bestaetigt": False,
+                "alarm_verschickt": True,
+            }
+        ]
+
+        result = bestaetige_offene_einnahmen(due, offene, datetime(2026, 4, 20, 9, 5))
+
+        self.assertEqual(len(result["verspaetet_bestaetigt"]), 1)
+        self.assertEqual(result["verspaetet_bestaetigt"][0], due[0])
+        self.assertTrue(offene[0]["bestaetigt"])
+
+    # --- ist_eintrag_faellig_am: Wiederholungstypen ---
+
+    def test_ist_eintrag_faellig_am_woechentlich_matches_only_that_weekday(self):
+        eintrag = {"wiederholung": "woechentlich", "tag": "Mo", "zeit": "08:00"}
+
+        self.assertTrue(ist_eintrag_faellig_am(eintrag, date(2026, 4, 20)))  # Montag
+        self.assertFalse(ist_eintrag_faellig_am(eintrag, date(2026, 4, 21)))  # Dienstag
+
+    def test_ist_eintrag_faellig_am_defaults_to_woechentlich_when_field_missing(self):
+        eintrag = {"tag": "Mo", "zeit": "08:00"}
+
+        self.assertTrue(ist_eintrag_faellig_am(eintrag, date(2026, 4, 20)))
+
+    def test_ist_eintrag_faellig_am_taeglich_matches_every_day(self):
+        eintrag = {"wiederholung": "taeglich", "zeit": "08:00"}
+
+        self.assertTrue(ist_eintrag_faellig_am(eintrag, date(2026, 4, 20)))
+        self.assertTrue(ist_eintrag_faellig_am(eintrag, date(2026, 4, 27)))
+
+    def test_ist_eintrag_faellig_am_taeglich_respects_bis_datum(self):
+        eintrag = {"wiederholung": "taeglich", "zeit": "08:00", "bis_datum": "22.04.2026"}
+
+        self.assertTrue(ist_eintrag_faellig_am(eintrag, date(2026, 4, 22)))
+        self.assertFalse(ist_eintrag_faellig_am(eintrag, date(2026, 4, 23)))
+
+    def test_ist_eintrag_faellig_am_einmalig_matches_only_exact_date(self):
+        eintrag = {"wiederholung": "einmalig", "datum": "05.09.2026", "zeit": "08:00"}
+
+        self.assertTrue(ist_eintrag_faellig_am(eintrag, date(2026, 9, 5)))
+        self.assertFalse(ist_eintrag_faellig_am(eintrag, date(2026, 9, 6)))
+
+    def test_ist_eintrag_faellig_am_einmalig_without_datum_never_matches(self):
+        eintrag = {"wiederholung": "einmalig", "zeit": "08:00"}
+
+        self.assertFalse(ist_eintrag_faellig_am(eintrag, date(2026, 9, 5)))
+
+    # --- finde_faellige_einnahmen mit gemischten Wiederholungstypen ---
+
+    def test_finde_faellige_einnahmen_includes_taeglich_and_einmalig(self):
+        jetzt = datetime(2026, 4, 20, 8, 0, 0)  # Montag
+        plan = [
+            {"wiederholung": "taeglich", "zeit": "08:00", "fach": "1", "medikament": "Vitamin"},
+            {"wiederholung": "einmalig", "datum": "20.04.2026", "zeit": "08:00", "fach": "2", "medikament": "Einmal"},
+            {"wiederholung": "einmalig", "datum": "21.04.2026", "zeit": "08:00", "fach": "3", "medikament": "Morgen"},
+            {"wiederholung": "woechentlich", "tag": "Di", "zeit": "08:00", "fach": "4", "medikament": "Dienstag"},
+        ]
+
+        due, _jetzt, _minute_key, _tag_kurz, _zeit_str = finde_faellige_einnahmen(plan, jetzt=jetzt)
+
+        medikamente = {e["medikament"] for e in due}
+        self.assertEqual(medikamente, {"Vitamin", "Einmal"})
+
+    # --- berechne_naechste_einnahme mit taeglich/einmalig ---
+
+    def test_berechne_naechste_einnahme_considers_taeglich_entries(self):
+        jetzt = datetime(2026, 4, 20, 10, 0, 0)
+        plan = [{"wiederholung": "taeglich", "zeit": "09:00", "medikament": "Vitamin"}]
+
+        entry, dt_next = berechne_naechste_einnahme(plan, jetzt=jetzt)
+
+        self.assertEqual(entry["medikament"], "Vitamin")
+        self.assertEqual(dt_next, datetime(2026, 4, 21, 9, 0, 0))
+
+    def test_berechne_naechste_einnahme_finds_einmalig_far_in_future(self):
+        jetzt = datetime(2026, 4, 20, 10, 0, 0)
+        plan = [{"wiederholung": "einmalig", "datum": "05.09.2026", "zeit": "08:00", "medikament": "Termin"}]
+
+        entry, dt_next = berechne_naechste_einnahme(plan, jetzt=jetzt)
+
+        self.assertEqual(entry["medikament"], "Termin")
+        self.assertEqual(dt_next, datetime(2026, 9, 5, 8, 0, 0))
+
+    def test_berechne_naechste_einnahme_ignores_taeglich_entry_past_bis_datum(self):
+        jetzt = datetime(2026, 4, 20, 10, 0, 0)
+        plan = [{"wiederholung": "taeglich", "zeit": "09:00", "bis_datum": "19.04.2026", "medikament": "Abgelaufen"}]
+
+        entry, dt_next = berechne_naechste_einnahme(plan, jetzt=jetzt)
+
+        self.assertIsNone(entry)
+        self.assertIsNone(dt_next)
+
+    # --- bereinige_offene_einnahmen ---
+
+    def test_bereinige_offene_einnahmen_removes_old_resolved_entries(self):
+        jetzt = datetime(2026, 4, 20, 12, 0, 0)
+        offene = [
+            {"bestaetigt": True, "faellige_zeit": datetime(2026, 4, 17, 8, 0, 0)},
+            {"bestaetigt": False, "alarm_verschickt": True, "faellige_zeit": datetime(2026, 4, 17, 8, 0, 0)},
+        ]
+
+        result = bereinige_offene_einnahmen(offene, jetzt=jetzt, tage=2)
+
+        self.assertEqual(result, [])
+
+    def test_bereinige_offene_einnahmen_keeps_recent_and_unresolved_entries(self):
+        jetzt = datetime(2026, 4, 20, 12, 0, 0)
+        aktuell_unbestaetigt = {"bestaetigt": False, "alarm_verschickt": False, "faellige_zeit": datetime(2026, 4, 10, 8, 0, 0)}
+        kuerzlich_bestaetigt = {"bestaetigt": True, "faellige_zeit": datetime(2026, 4, 20, 8, 0, 0)}
+        offene = [aktuell_unbestaetigt, kuerzlich_bestaetigt]
+
+        result = bereinige_offene_einnahmen(offene, jetzt=jetzt, tage=2)
+
+        self.assertEqual(result, [aktuell_unbestaetigt, kuerzlich_bestaetigt])
+
+    def test_erstelle_offene_einnahmen_keys_include_date_so_daily_entries_dont_collide_across_days(self):
+        due = [{"zeit": "08:00", "fach": "1", "medikament": "Vitamin"}]
+
+        tag1 = erstelle_offene_einnahmen(
+            due=due, offene_einnahmen=[], jetzt=datetime(2026, 4, 20, 8, 0, 0), delay_min=30
+        )
+        # Ein Eintrag von "gestern", der nie bestätigt wurde (z.B. Alarm ausgelöst).
+        gestern_unbestaetigt = dict(tag1[0])
+        gestern_unbestaetigt["bestaetigt"] = False
+
+        tag2 = erstelle_offene_einnahmen(
+            due=due, offene_einnahmen=[gestern_unbestaetigt], jetzt=datetime(2026, 4, 21, 8, 0, 0), delay_min=30
+        )
+
+        self.assertEqual(len(tag2), 1)
+        self.assertNotEqual(tag1[0]["key"], tag2[0]["key"])
 
 
 if __name__ == "__main__":

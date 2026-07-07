@@ -8,6 +8,7 @@ from smartmed.config import (
     ARDUINO_BAUDRATE,
     ARDUINO_PORT,
     ARDUINO_TIMEOUT,
+    HARDWARE_MODE,
 )
 from smartmed.hardware.protocol import parse_response
 
@@ -88,3 +89,17 @@ class ArduinoSerialTransport:
             raise ArduinoSerialError("Keine Antwort vom Arduino erhalten.")
 
         return response
+
+
+def create_arduino_transport():
+    """Erzeugt den Hardware-Transport passend zu SMARTMED_HARDWARE_MODE.
+
+    "real" (Standard) -> echte serielle Verbindung zum Arduino.
+    "mock" -> simulierte Verbindung für lokale Entwicklung/Tests ohne Hardware.
+    """
+    if HARDWARE_MODE == "mock":
+        from smartmed.hardware.mock_transport import MockArduinoTransport
+
+        return MockArduinoTransport()
+
+    return ArduinoSerialTransport()

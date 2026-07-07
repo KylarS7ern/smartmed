@@ -1,3 +1,16 @@
+WIEDERHOLUNG_TO_TEXT = {
+    'woechentlich': 'Wöchentlich',
+    'taeglich': 'Täglich',
+    'einmalig': 'Einmalig',
+}
+
+TEXT_TO_WIEDERHOLUNG = {text: value for value, text in WIEDERHOLUNG_TO_TEXT.items()}
+
+_WOCHENTAGE_REIHENFOLGE = {
+    'Mo': 0, 'Di': 1, 'Mi': 2, 'Do': 3, 'Fr': 4, 'Sa': 5, 'So': 6,
+}
+
+
 def rebuild_fach_medikamente(plan_eintraege):
     """Baut die Fach->Medikament-Zuordnung aus dem aktuellen Plan neu auf."""
     fach_medikamente = {}
@@ -12,11 +25,62 @@ def rebuild_fach_medikamente(plan_eintraege):
     return fach_medikamente
 
 
-def _build_plan_log_text(action, *, tag, zeit, fach, medikament, anzahl):
-    return (
-        f"Plan-Eintrag {action}: "
-        f"{tag} {zeit} | Fach {fach} | {medikament} (x{anzahl})"
-    )
+def format_repeat_label(eintrag):
+    """Baut den Zeit-/Wiederholungs-Teil der Anzeige für einen Plan-Eintrag."""
+    wiederholung = eintrag.get('wiederholung', 'woechentlich')
+    zeit = eintrag.get('zeit', '')
+    bis_datum = eintrag.get('bis_datum', '')
+
+    if wiederholung == 'einmalig':
+        datum = eintrag.get('datum', '')
+        return f"Einmalig {datum} {zeit}"
+
+    if wiederholung == 'taeglich':
+        label = f"Täglich {zeit}"
+    else:
+        label = f"{eintrag.get('tag', '')} {zeit}"
+
+    if bis_datum:
+        label += f" (bis {bis_datum})"
+
+    return label
+
+
+def format_plan_entry_summary(eintrag):
+    """Menschlich lesbare Zusammenfassung eines Plan-Eintrags für Listen/Logs."""
+    fach = eintrag.get('fach', '')
+    med = eintrag.get('medikament', '')
+    anzahl = eintrag.get('anzahl', 1)
+
+    return f"{format_repeat_label(eintrag)} | Fach {fach} | {med} (x{anzahl})"
+
+
+def _datum_to_sortable(datum_str):
+    """Wandelt 'TT.MM.JJJJ' in einen chronologisch sortierbaren String um."""
+    try:
+        tag, monat, jahr = datum_str.split('.')
+        return f"{int(jahr):04d}-{int(monat):02d}-{int(tag):02d}"
+    except (ValueError, AttributeError):
+        return "9999-99-99"
+
+
+def plan_entry_sort_key(eintrag):
+    """Sortierschlüssel für die Plan-Liste.
+
+    Reihenfolge: zuerst 'Täglich', dann 'Wöchentlich' (nach Wochentag),
+    dann 'Einmalig' (chronologisch) - jeweils sekundär nach Uhrzeit.
+    """
+    wiederholung = eintrag.get('wiederholung', 'woechentlich')
+    zeit = eintrag.get('zeit', '')
+
+    if wiederholung == 'taeglich':
+        return (0, '', zeit)
+
+    if wiederholung == 'einmalig':
+        return (2, _datum_to_sortable(eintrag.get('datum', '')), zeit)
+
+    tag_index = _WOCHENTAGE_REIHENFOLGE.get(eintrag.get('tag', ''), 99)
+    return (1, f"{tag_index:02d}", zeit)
 
 
 def create_plan_entry(
@@ -25,9 +89,12 @@ def create_plan_entry(
     fach_medikamente,
     medikament,
     fach,
-    tag,
     zeit,
     anzahl,
+    wiederholung='woechentlich',
+    tag=None,
+    datum=None,
+    bis_datum=None,
 ):
     """Neuen Plan-Eintrag anlegen, falls das Fach dazu passt."""
     vorhandenes_med = fach_medikamente.get(fach)
@@ -51,9 +118,12 @@ def create_plan_entry(
     eintrag = {
         'medikament': medikament,
         'fach': fach,
-        'tag': tag,
         'zeit': zeit,
         'anzahl': anzahl,
+        'wiederholung': wiederholung,
+        'tag': tag,
+        'datum': datum,
+        'bis_datum': bis_datum,
     }
 
     plan_eintraege.append(eintrag)
@@ -62,14 +132,7 @@ def create_plan_entry(
         'ok': True,
         'eintrag': eintrag,
         'fach_medikamente': fach_medikamente_neu,
-        'log_text': _build_plan_log_text(
-            'neu',
-            tag=tag,
-            zeit=zeit,
-            fach=fach,
-            medikament=medikament,
-            anzahl=anzahl,
-        ),
+        'log_text': f"Plan-Eintrag neu: {format_plan_entry_summary(eintrag)}",
     }
 
 
@@ -80,9 +143,12 @@ def update_plan_entry(
     eintrag,
     medikament,
     fach,
-    tag,
     zeit,
     anzahl,
+    wiederholung='woechentlich',
+    tag=None,
+    datum=None,
+    bis_datum=None,
 ):
     """Bestehenden Plan-Eintrag aktualisieren."""
     vorhandenes_med = fach_medikamente.get(fach)
@@ -102,33 +168,25 @@ def update_plan_entry(
 
     eintrag['medikament'] = medikament
     eintrag['fach'] = fach
-    eintrag['tag'] = tag
     eintrag['zeit'] = zeit
     eintrag['anzahl'] = anzahl
+    eintrag['wiederholung'] = wiederholung
+    eintrag['tag'] = tag
+    eintrag['datum'] = datum
+    eintrag['bis_datum'] = bis_datum
 
     fach_medikamente_neu = rebuild_fach_medikamente(plan_eintraege)
 
     return {
         'ok': True,
         'fach_medikamente': fach_medikamente_neu,
-        'log_text': _build_plan_log_text(
-            'geändert',
-            tag=tag,
-            zeit=zeit,
-            fach=fach,
-            medikament=medikament,
-            anzahl=anzahl,
-        ),
+        'log_text': f"Plan-Eintrag geändert: {format_plan_entry_summary(eintrag)}",
     }
 
 
 def delete_plan_entry(*, plan_eintraege, eintrag):
     """Plan-Eintrag löschen und Fachbelegung neu berechnen."""
-    tag = eintrag.get('tag', '')
-    zeit = eintrag.get('zeit', '')
-    fach = eintrag.get('fach', '')
-    medikament = eintrag.get('medikament', '')
-    anzahl = eintrag.get('anzahl', 1)
+    zusammenfassung = format_plan_entry_summary(eintrag)
 
     try:
         plan_eintraege.remove(eintrag)
@@ -142,12 +200,5 @@ def delete_plan_entry(*, plan_eintraege, eintrag):
     return {
         'ok': True,
         'fach_medikamente': rebuild_fach_medikamente(plan_eintraege),
-        'log_text': _build_plan_log_text(
-            'gelöscht',
-            tag=tag,
-            zeit=zeit,
-            fach=fach,
-            medikament=medikament,
-            anzahl=anzahl,
-        ),
+        'log_text': f"Plan-Eintrag gelöscht: {zusammenfassung}",
     }

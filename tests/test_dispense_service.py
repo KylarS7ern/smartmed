@@ -1,7 +1,21 @@
 import unittest
 
 from smartmed.hardware.serial_transport import ArduinoSerialError
-from smartmed.services.dispense_service import dispense_slot, ping_arduino
+from smartmed.services.dispense_service import (
+    dispense_due_entries,
+    dispense_slot,
+    ping_arduino,
+)
+
+
+class QueuedTransport:
+    def __init__(self, responses=None):
+        self.responses = list(responses or [])
+        self.commands = []
+
+    def transact(self, command: str):
+        self.commands.append(command)
+        return self.responses.pop(0)
 
 
 class FakeTransport:
@@ -103,6 +117,58 @@ class DispenseServiceTests(unittest.TestCase):
         self.assertEqual(result["kind"], "device_error")
         self.assertEqual(result["code"], "SLOT_NOT_ENABLED")
         self.assertIn("Fach 2", result["message"])
+
+    def test_dispense_due_entries_splits_dispensed_and_failed(self):
+        due = [
+            {"tag": "Mo", "zeit": "08:00", "fach": "1", "medikament": "A", "anzahl": 1},
+            {"tag": "Mo", "zeit": "08:00", "fach": "2", "medikament": "B", "anzahl": 2},
+        ]
+        transport = QueuedTransport(
+            responses=[
+                {
+                    "ok": True,
+                    "kind": "dispense",
+                    "slot": 1,
+                    "count": 1,
+                    "raw": "OK DISPENSE 1 1",
+                },
+                {
+                    "ok": False,
+                    "kind": "error",
+                    "code": "SLOT_NOT_ENABLED",
+                    "message": "",
+                    "raw": "ERR SLOT_NOT_ENABLED",
+                },
+            ]
+        )
+
+        result = dispense_due_entries(transport, due)
+
+        self.assertEqual(len(result["dispensed"]), 1)
+        self.assertEqual(result["dispensed"][0]["eintrag"]["fach"], "1")
+        self.assertEqual(len(result["failed"]), 1)
+        self.assertEqual(result["failed"][0]["eintrag"]["fach"], "2")
+        self.assertEqual(result["failed"][0]["result"]["code"], "SLOT_NOT_ENABLED")
+
+    def test_dispense_due_entries_handles_invalid_fach_without_calling_transport(self):
+        due = [
+            {"tag": "Mo", "zeit": "08:00", "fach": "keins", "medikament": "A", "anzahl": 1},
+        ]
+        transport = QueuedTransport(responses=[])
+
+        result = dispense_due_entries(transport, due)
+
+        self.assertEqual(result["dispensed"], [])
+        self.assertEqual(len(result["failed"]), 1)
+        self.assertEqual(result["failed"][0]["result"]["kind"], "validation_error")
+        self.assertEqual(transport.commands, [])
+
+    def test_dispense_due_entries_empty_due_list(self):
+        transport = QueuedTransport(responses=[])
+
+        result = dispense_due_entries(transport, [])
+
+        self.assertEqual(result, {"dispensed": [], "failed": []})
 
     def test_dispense_slot_unexpected_response(self):
         transport = FakeTransport(

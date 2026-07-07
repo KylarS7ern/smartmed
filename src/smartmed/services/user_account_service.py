@@ -1,4 +1,5 @@
 from smartmed.models.defaults import build_default_user
+from smartmed.services.security_service import hash_secret, is_hashed, verify_secret
 
 
 def list_sorted_usernames(users):
@@ -14,7 +15,7 @@ def user_requires_password(users, username):
 
 
 def verify_user_password(users, username, password_input):
-    """Prüft ein eingegebenes Passwort gegen den gespeicherten Benutzer."""
+    """Prüft ein eingegebenes Passwort gegen den gespeicherten (gehashten oder alten Klartext-) Benutzer."""
     user = users.get(username, {})
     gespeichertes_pw = user.get('password', '')
 
@@ -22,17 +23,20 @@ def verify_user_password(users, username, password_input):
         return {
             'ok': True,
             'message': '',
+            'needs_rehash': False,
         }
 
-    if password_input == gespeichertes_pw:
+    if verify_secret(gespeichertes_pw, password_input):
         return {
             'ok': True,
             'message': '',
+            'needs_rehash': not is_hashed(gespeichertes_pw),
         }
 
     return {
         'ok': False,
         'message': 'Falsches Passwort. Bitte erneut eingeben:',
+        'needs_rehash': False,
     }
 
 
@@ -55,7 +59,7 @@ def create_user_result(*, users, username_text, password_text, settings):
 
     user_data = build_default_user(
         username=username,
-        password=password,
+        password=hash_secret(password) if password else '',
         patient_name=username,
         patient_geburt='-',
         settings=settings,
