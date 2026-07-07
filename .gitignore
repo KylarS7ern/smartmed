@@ -1,7 +1,10 @@
 __pycache__/
 *.py[cod]
 .venv/
-.vscode/
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json
 .env
 *.log
 data/*.json
+exports/
