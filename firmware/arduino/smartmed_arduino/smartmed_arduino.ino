@@ -6,10 +6,17 @@ const int EN_PINS[SLOT_COUNT]   = {4, -1, -1};
 
 const bool SLOT_ENABLED[SLOT_COUNT] = {true, false, false};
 
-// Für den ersten echten Motor-Test:
-// Diese Zahl bestimmt, wie weit der Motor pro "1 Ausgabe" dreht.
-// Später wird dieser Wert pro Fach kalibriert.
-// Für jetzt ist es bewusst nur eine Test-Basis.
+// Diese Zahl bestimmt, wie weit der Motor pro "1 Ausgabe"-Einheit dreht.
+// Kalibrierung pro Fach hier eintragen.
+//
+// WICHTIG: Das ist die EINZIGE Stelle, die festlegt, wie viele Schritte
+// (= wie viel Grad) eine Ausgabe-Einheit physisch dreht. Die Raspberry-Pi-
+// Software (Python) kennt diese Werte nicht und rät sie auch nicht - sie
+// schickt für einen Plan-Eintrag nur "DISPENSE <Fach> <Anzahl>" (Anzahl =
+// die im Einnahmeplan konfigurierte Stückzahl). Wird hier ein Wert für ein
+// Fach angepasst/neu kalibriert, wirkt sich das automatisch korrekt auf
+// jede künftige Ausgabe dieses Fachs aus, ohne dass am Python-Code etwas
+// geändert werden muss.
 const int STEPS_PER_DISPENSE_UNIT[SLOT_COUNT] = {200, 200, 200};
 
 const unsigned int STEP_PULSE_HIGH_US = 800;

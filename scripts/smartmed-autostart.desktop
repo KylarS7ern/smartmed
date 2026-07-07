@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=SmartMediSpender
+Comment=Startet die SmartMediSpender-App automatisch nach dem Login
+Exec=/bin/bash -lc "$HOME/projects/smartmed/scripts/run_pi_resilient.sh"
+X-GNOME-Autostart-enabled=true
+NoDisplay=false
+Terminal=false

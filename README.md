@@ -3,7 +3,6 @@
 SmartMediSpender ist die Raspberry-Pi-Software für meinen Diplomarbeits-Prototypen zur automatischen Medikamentenausgabe.
 
 Die Anwendung läuft auf einem Raspberry Pi mit Touchscreen und wurde mit Python und Kivy umgesetzt.
-Aktuell wird die bestehende funktionale App nicht neu gestartet, sondern schrittweise professionell refaktoriert.
 
 ## Projektziel
 
@@ -14,29 +13,30 @@ Ziel ist eine saubere, wartbare und erweiterbare Finalsoftware für einen Medika
 - Einnahmeplan
 - Ereignis- und Einnahmelogs
 - Alarm- und Benachrichtigungslogik
-- späterer Anbindung an Arduino / Hardware
+- Anbindung an Arduino / Hardware für die tatsächliche Tablettenausgabe
 
-## Aktueller Architekturstand
+## Architektur
 
-Das Projekt befindet sich in einem inkrementellen Refactoring.
-
-- Die neue Projektstruktur liegt unter `src/smartmed/`
+- Die gesamte Projektstruktur liegt unter `src/smartmed/`, sauber nach Verantwortlichkeit aufgeteilt (`services/`, `ui/`, `hardware/`, `models/`)
 - Die App wird über `python -m smartmed.main` gestartet
-- Teile der Logik wurden bereits aus dem alten Monolithen ausgelagert
-- Der Legacy-Kern existiert noch in `legacy/gui.py`
+- Die App-Klasse `SmartMedGUI` (`src/smartmed/app.py`) ist ein dünner Orchestrator: sie hält den App-Zustand und verdrahtet Kivy-Callbacks (Timer, Touch-Events) mit der eigentlichen Geschäftslogik in `services/`
 - Laufzeitdaten liegen in `data/smartmed_plan.json`
-
-Wichtig:
-Es handelt sich aktuell bewusst **nicht** um einen kompletten Neustart, sondern um eine schrittweise Weiterentwicklung der bestehenden funktionalen App.
 
 ## Projektstruktur
 
     smartmed/
     ├─ data/
-    ├─ legacy/
     ├─ scripts/
     ├─ src/
     │  └─ smartmed/
+    │     ├─ app.py          # App-Klasse SmartMedGUI + create_app()
+    │     ├─ main.py         # Einstiegspunkt (python -m smartmed.main)
+    │     ├─ config.py
+    │     ├─ models/
+    │     ├─ services/       # gesamte Geschäftslogik
+    │     ├─ hardware/       # Arduino-Transport (real + Mock)
+    │     └─ ui/             # Screens, Popups, Theme, Widgets
+    ├─ tests/
     ├─ pyproject.toml
     ├─ README.md
 
@@ -69,6 +69,45 @@ Alternativ direkt:
     export PYTHONPATH=src
     python -m smartmed.main
 
+## Lokale Entwicklung unter Windows / VS Code
+
+Die App lässt sich auch ohne angeschlossenen Raspberry Pi / Arduino auf einem
+normalen Windows-Laptop starten und testen (z.B. um Änderungen vorab zu prüfen,
+bevor sie aufs Pi kommen).
+
+### 1. Virtuelle Umgebung erstellen
+
+    python -m venv .venv
+    .venv\Scripts\Activate.ps1
+    pip install -e .
+
+### 2. `.env` für lokale Entwicklung anlegen
+
+    copy .env.example .env
+
+In der `.env` folgende zwei Werte setzen (Rest kann leer bleiben):
+
+    SMARTMED_HARDWARE_MODE=mock
+    SMARTMED_KIOSK=0
+
+- `SMARTMED_HARDWARE_MODE=mock` simuliert den Arduino (kein echtes Gerät nötig, PING/DISPENSE liefern plausible Antworten).
+- `SMARTMED_KIOSK=0` öffnet ein normales, verschiebbares/schliessbares Fenster statt des Vollbild-Kiosk-Modus vom echten Gerät.
+
+Auf dem Pi bleibt `.env` wie bisher (bzw. beide Werte einfach weglassen = Standardverhalten unverändert: echte Hardware, Vollbild-Kiosk).
+
+### 3. App starten
+
+    $env:PYTHONPATH = "src"
+    python -m smartmed.main
+
+Oder direkt in VS Code über **Run and Debug** → "SmartMed: App starten (lokal)" (siehe `.vscode/launch.json`).
+
+### 4. Tests ausführen
+
+    python -m unittest discover -s tests
+
+Oder in VS Code über den Test-Explorer (Test-Framework ist in `.vscode/settings.json` bereits auf `unittest` konfiguriert) bzw. die Debug-Konfiguration "SmartMed: Alle Tests ausführen".
+
 ## Datenablage
 
 Die aktive Datendatei ist:
@@ -88,17 +127,31 @@ Warum dieser Weg:
 - spätere Hardware-Anbindung besser testbar
 - weniger Komplexität als Docker / Dev Container für diese Projektphase
 
+## Autostart auf dem Pi einrichten
+
+Damit die App direkt beim Einschalten des Pi erscheint (Raspberry Pi OS Desktop
+mit Autologin), gibt es einen XDG-Autostart-Eintrag.
+
+### Einmalig einrichten
+
+    cd ~/projects/smartmed
+    ./scripts/install_autostart.sh
+
+Das kopiert `scripts/smartmed-autostart.desktop` nach `~/.config/autostart/`
+und macht die Start-Skripte ausführbar. Beim nächsten Neustart/Login startet
+die App automatisch über `scripts/run_pi_resilient.sh` (wartet kurz auf die
+USB/Serial-Enumeration und startet die App bei einem unerwarteten Absturz neu;
+Log dazu in `logs/autostart.log`).
+
+### Wieder deaktivieren
+
+    rm ~/.config/autostart/smartmed-autostart.desktop
+
 ## Nächste technische Ziele
 
-- weitere Entkopplung von Legacy-Code
-- saubere Trennung von GUI, Logik, Daten und Hardware
-- Verbesserung von UI/UX und Bildschirmtastatur
-- strukturierte Arduino-Kommunikation
-- Raspberry-Pi-Autostart
-- erste automatisierte Tests
+- Tabletten-Erkennung per Sensor (Lichtschranke) inkl. Retry-Logik, sobald die Sensor-Hardware verbaut ist
+- Missed-Dose-Erkennung nach einem App-Neustart
 
 ## Hinweise
 
-- `legacy/gui.py` ist noch Teil der funktionalen Basis
-- Refactoring erfolgt in kleinen, lauffähigen Schritten
 - `data/smartmed_plan.json` ist die aktuelle Quelle der Wahrheit für Laufzeitdaten
