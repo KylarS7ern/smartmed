@@ -1,13 +1,21 @@
 from kivy.app import App
+from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
-from kivy.uix.textinput import TextInput
 from kivy.clock import Clock
 
 from smartmed.hardware.slot_config import get_slot_label
+from smartmed.ui import theme
 from smartmed.ui.navigation import go_to_settings_menu
+from smartmed.ui.widgets import (
+    MutedLabel,
+    SecondaryButton,
+    StyledTextInput,
+    SuccessButton,
+    TitleLabel,
+    WarningButton,
+    field_row,
+)
 from smartmed.services.admin_pin_service import (
     build_admin_pin_status_text,
     build_admin_pin_update,
@@ -18,99 +26,85 @@ class AdvancedSettingsScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
-        titel = Label(
+        titel = TitleLabel(
             text='Erweiterte Einstellungen',
-            font_size='24sp',
-            size_hint=(1, 0.15)
+            font_size=theme.FONT_XLARGE,
+            size_hint=(1, None),
+            height=dp(48)
         )
 
-        info = Label(
+        info = MutedLabel(
             text=(
-                'Hier komen später globale Einstellungen hin,\n'
+                'Hier kommen später weitere globale Einstellungen hin,\n'
                 'z.B. WLAN, Zeitsynchronisation, Backup/Restore, '
-                'Fach-Medikament, Passwortscshutz ect.'
+                'Fach-Medikament.'
             ),
             halign='center',
             valign='middle',
-            size_hint=(1, 0.25)
+            size_hint=(1, None),
+            height=dp(70)
         )
-        info.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
 
-        self.pin_info_label = Label(
-            text='(Passwortschutz noch nicht implementiert)',
+        self.pin_info_label = MutedLabel(
+            text='',
             halign='center',
             valign='middle',
-            size_hint=(1, 0.1)
+            size_hint=(1, None),
+            height=dp(36)
         )
-        self.pin_info_label.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
 
-        self.hardware_test_label = Label(
+        self.hardware_test_label = MutedLabel(
             text='Hardware-Test noch nicht ausgeführt.',
             halign='center',
             valign='middle',
-            size_hint=(1, 0.1)
-        )
-        self.hardware_test_label.bind(
-            size=lambda inst, val: setattr(inst, 'text_size', val)
+            size_hint=(1, None),
+            height=dp(36)
         )
 
-        pin_layout1 = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.1)
-        )
-        lbl_pin = Label(
-            text='Neuer Admin-PIN:',
-            size_hint=(0.5, 0.1)
-        )
-        self.pin_input = TextInput(
+        self.pin_input = StyledTextInput(
             multiline=False,
             password=True,
+            font_size=theme.FONT_BODY,
             size_hint=(0.5, 1)
         )
-        pin_layout1.add_widget(lbl_pin)
-        pin_layout1.add_widget(self.pin_input)
-
-        pin_layout2 = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.1)
-        )
-        lbl_pin2 = Label(
-            text='PIN wiederholen:',
-            size_hint=(0.5, 1)
-        )
-        self.pin_repeat_input = TextInput(
+        self.pin_repeat_input = StyledTextInput(
             multiline=False,
             password=True,
+            font_size=theme.FONT_BODY,
             size_hint=(0.5, 1)
         )
-        pin_layout2.add_widget(lbl_pin2)
-        pin_layout2.add_widget(self.pin_repeat_input)
 
-        btn_save_pin = Button(
+        btn_save_pin = SuccessButton(
             text='Admin-PIN speichern / entfernen',
-            size_hint=(1, 0.15)
+            font_size=theme.FONT_LARGE,
+            size_hint=(1, None),
+            height=theme.BUTTON_HEIGHT
         )
         btn_save_pin.bind(on_press=self.speichern_pin)
 
-        btn_test_fach_1 = Button(
+        btn_test_fach_1 = WarningButton(
             text=f'Hardware-Test: {get_slot_label(1)} einmal ausgeben',
-            size_hint=(1, 0.12)
+            font_size=theme.FONT_BODY,
+            size_hint=(1, None),
+            height=theme.BUTTON_HEIGHT
         )
         btn_test_fach_1.bind(on_press=self.hardware_test_fach_1)
 
-        btn_test_fach_2 = Button(
+        btn_test_fach_2 = WarningButton(
             text=f'Hardware-Test: {get_slot_label(2)} einmal ausgeben',
-            size_hint=(1, 0.12)
+            font_size=theme.FONT_BODY,
+            size_hint=(1, None),
+            height=theme.BUTTON_HEIGHT
         )
         btn_test_fach_2.bind(on_press=self.hardware_test_fach_2)
 
-        btn_test_fach_3 = Button(
+        btn_test_fach_3 = WarningButton(
             text=f'Hardware-Test: {get_slot_label(3)} einmal ausgeben',
-            size_hint=(1, 0.12)
+            font_size=theme.FONT_BODY,
+            size_hint=(1, None),
+            height=theme.BUTTON_HEIGHT
         )
         btn_test_fach_3.bind(on_press=self.hardware_test_fach_3)
 
@@ -120,9 +114,11 @@ class AdvancedSettingsScreen(Screen):
             btn_test_fach_3,
         ]
 
-        btn_back = Button(
+        btn_back = SecondaryButton(
             text='Zurück',
-            size_hint=(1, 0.15)
+            font_size=theme.FONT_LARGE,
+            size_hint=(1, None),
+            height=theme.BUTTON_HEIGHT
         )
         btn_back.bind(on_press=self.zurueck)
 
@@ -130,8 +126,8 @@ class AdvancedSettingsScreen(Screen):
         layout.add_widget(info)
         layout.add_widget(self.pin_info_label)
         layout.add_widget(self.hardware_test_label)
-        layout.add_widget(pin_layout1)
-        layout.add_widget(pin_layout2)
+        layout.add_widget(field_row('Neuer Admin-PIN:', self.pin_input))
+        layout.add_widget(field_row('PIN wiederholen:', self.pin_repeat_input))
         layout.add_widget(btn_save_pin)
         layout.add_widget(btn_test_fach_1)
         layout.add_widget(btn_test_fach_2)
@@ -183,7 +179,7 @@ class AdvancedSettingsScreen(Screen):
             'message',
             'Unbekanntes Ergebnis beim Hardware-Test.'
         )
-        
+
     def hardware_test_fach_1(self, instance):
         self.hardware_test_fach(1)
 

@@ -3,10 +3,12 @@ from datetime import datetime, timedelta
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
+
+from smartmed.ui import theme
 from smartmed.ui.navigation import go_to_menu
+from smartmed.ui.widgets import BodyLabel, MutedLabel, PrimaryButton, SecondaryButton, TitleLabel
+from smartmed.services.schedule_service import WOCHENTAGE, ist_eintrag_faellig_am
 
 
 class StatusScreen(Screen):
@@ -15,55 +17,61 @@ class StatusScreen(Screen):
 
         self.tages_offset = 0
 
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
-        titel = Label(
+        titel = TitleLabel(
             text='Status',
-            font_size='21sp',
-            size_hint=(1, 0.12)
+            font_size=theme.FONT_TITLE,
+            size_hint=(1, 0.1)
         )
 
-        self.datetime_label = Label(
+        self.datetime_label = MutedLabel(
             text='',
-            font_size='14sp',
-            size_hint=(1, 0.1)
+            font_size=theme.FONT_BODY,
+            size_hint=(1, 0.08)
         )
 
         nav_layout = BoxLayout(
             orientation='horizontal',
-            spacing=10,
+            spacing=theme.SPACING,
             size_hint=(1, 0.1)
         )
 
-        btn_prev = Button(
+        btn_prev = PrimaryButton(
             text='< Tag zurück',
-            size_hint=(0.5, 1)
+            size_hint=(0.4, 1)
         )
         btn_prev.bind(on_press=self.tag_zurueck)
 
-        btn_next = Button(
+        btn_heute = SecondaryButton(
+            text='Heute',
+            size_hint=(0.2, 1)
+        )
+        btn_heute.bind(on_press=self.springe_zu_heute)
+
+        btn_next = PrimaryButton(
             text='Tag vor >',
-            size_hint=(0.5, 1)
+            size_hint=(0.4, 1)
         )
         btn_next.bind(on_press=self.tag_vor)
 
         nav_layout.add_widget(btn_prev)
+        nav_layout.add_widget(btn_heute)
         nav_layout.add_widget(btn_next)
 
-        self.status_label = Label(
+        self.status_label = BodyLabel(
             text='Lade Status...',
+            font_size=theme.FONT_LARGE,
             halign='center',
             valign='middle',
-            size_hint=(1, 0.6)
+            size_hint=(1, 0.57),
+            markup=True,
         )
 
-        self.status_label.bind(
-            size=lambda inst, val: setattr(inst, 'text_size', val)
-        )
-
-        btn_back = Button(
+        btn_back = SecondaryButton(
             text='Zurück zum Hauptmenü',
-            size_hint=(1, 0.1)
+            font_size=theme.FONT_LARGE,
+            size_hint=(1, 0.13)
         )
         btn_back.bind(on_press=self.zurueck_zum_menue)
 
@@ -82,6 +90,10 @@ class StatusScreen(Screen):
         jetzt = datetime.now()
         self.datetime_label.text = jetzt.strftime('%d.%m.%Y  %H:%M:%S')
 
+    def _primary_hex(self):
+        r, g, b, _a = theme.PRIMARY
+        return f"{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
+
     def update_status(self):
         """Status-text aus dem App-Zustand aktualisieren."""
         app = App.get_running_app()
@@ -91,8 +103,7 @@ class StatusScreen(Screen):
         heute = datetime.now().date()
         zieldatum = heute + timedelta(days=self.tages_offset)
 
-        wochentage = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
-        tag_kurz = wochentage[zieldatum.weekday()]
+        tag_kurz = WOCHENTAGE[zieldatum.weekday()]
         datum_str = zieldatum.strftime('%d.%m.%Y')
 
         if self.tages_offset == 0:
@@ -105,7 +116,7 @@ class StatusScreen(Screen):
             zusatz = f"({self.tages_offset:+d} Tage)"
 
         plan = getattr(app, 'plan_eintraege', [])
-        eintraege_heute = [e for e in plan if e.get('tag') == tag_kurz]
+        eintraege_heute = [e for e in plan if ist_eintrag_faellig_am(e, zieldatum)]
 
         eintraege_heute.sort(key=lambda e: e.get('zeit', ''))
 
@@ -119,18 +130,20 @@ class StatusScreen(Screen):
                 zeilen.append(f"{zeit} | Fach {fach} | {med} (x{anzahl})")
             plan_text = "\n".join(zeilen)
         else:
-            plan_text = 'Heute sind keine Einnahmen geplant. '
+            plan_text = 'Keine Einnahmen geplant.'
 
+        primary_hex = self._primary_hex()
         eintrag_next, dt_next = app.naechste_einnahme()
         if eintrag_next and dt_next:
             med_next = eintrag_next.get('medikament', '')
             fach_next = eintrag_next.get('fach', '')
             anzahl_next = eintrag_next.get('anzahl', 1)
 
-            next_time_str = dt_next.strftime('%a %d.%m.%Y %H:%M')
+            next_tag_kurz = WOCHENTAGE[dt_next.weekday()]
+            next_time_str = f"{next_tag_kurz} {dt_next.strftime('%d.%m.%Y %H:%M')}"
             next_line = (
-                f'\nNächste Einnahme: {next_time_str} | '
-                f'Fach {fach_next} | {med_next} (x{anzahl_next})'
+                f'\n[b][color={primary_hex}]Nächste Einnahme: {next_time_str} | '
+                f'Fach {fach_next} | {med_next} (x{anzahl_next})[/color][/b]'
             )
         else:
             next_line = '\nNächste Einnahme: keine geplant.'
@@ -138,7 +151,7 @@ class StatusScreen(Screen):
         self.status_label.text = (
             f"Patient: {name}\n"
             f"Geburt: {geburt}\n\n"
-            f"Tag: {tag_kurz} {datum_str} {zusatz}\n\n"
+            f"[b]Tag: {tag_kurz} {datum_str} {zusatz}[/b]\n\n"
             f"{plan_text}"
             f"{next_line}"
         )
@@ -155,4 +168,9 @@ class StatusScreen(Screen):
     def tag_vor(self, instance):
         """Einen Tag vor blättern."""
         self.tages_offset += 1
+        self.update_status()
+
+    def springe_zu_heute(self, instance):
+        """Direkt zum heutigen Tag zurückspringen."""
+        self.tages_offset = 0
         self.update_status()

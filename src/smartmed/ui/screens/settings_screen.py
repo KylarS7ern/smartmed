@@ -1,13 +1,20 @@
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
-from kivy.uix.spinner import Spinner
-from kivy.uix.textinput import TextInput
 
+from smartmed.ui import theme
 from smartmed.ui.navigation import go_to_settings_menu
+from smartmed.ui.widgets import (
+    BodyLabel,
+    PrimaryButton,
+    SecondaryButton,
+    StyledSpinner,
+    StyledTextInput,
+    SuccessButton,
+    TitleLabel,
+    field_row,
+    make_popup,
+)
 from smartmed.services.alarm_settings_app_service import (
     build_alarm_settings_screen_data,
     resolve_alarm_email_for_app,
@@ -15,25 +22,26 @@ from smartmed.services.alarm_settings_app_service import (
     send_alarm_test_notification,
 )
 
+
 class SettingsScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
         titel_layout = BoxLayout(
             orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.15)
+            spacing=theme.SPACING,
+            size_hint=(1, None),
+            height=theme.ROW_HEIGHT
         )
 
-        titel = Label(
+        titel = TitleLabel(
             text='Alarm-Einstellungen',
-            font_size='24sp',
-            size_hint=(1, 0.15)
+            font_size=theme.FONT_XLARGE,
         )
 
-        btn_info = Button(
+        btn_info = PrimaryButton(
             text='!',
             size_hint=(0.2, 1)
         )
@@ -42,133 +50,78 @@ class SettingsScreen(Screen):
         titel_layout.add_widget(titel)
         titel_layout.add_widget(btn_info)
 
-        alarm_delay_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.15)
-        )
-        lbl_delay = Label(
-            text='Zeit bis Alarm (Minuten):',
-            size_hint=(0.6, 1)
-        )
-        self.alarm_delay_input = TextInput(
+        self.alarm_delay_input = StyledTextInput(
             multiline=False,
             input_filter='int',
-            size_hint=(0.4, 1)
+            font_size=theme.FONT_BODY,
+            size_hint=(0.5, 1)
         )
-        alarm_delay_layout.add_widget(lbl_delay)
-        alarm_delay_layout.add_widget(self.alarm_delay_input)
 
-        alarm_mode_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.15)
-        )
-        lbl_mode = Label(
-            text='Art des Alarms:',
-            size_hint=(0.6, 1)
-        )
-        self.alarm_mode_spinner = Spinner(
+        self.alarm_mode_spinner = StyledSpinner(
             text='Popup + Log',
             values=('Popup + Log', 'Nur Log'),
-            size_hint=(0.4, 1)
+            font_size=theme.FONT_BODY,
+            size_hint=(0.5, 1)
         )
-        alarm_mode_layout.add_widget(lbl_mode)
-        alarm_mode_layout.add_widget(self.alarm_mode_spinner)
 
-        notify_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.15)
-        )
-        lbl_notify = Label(
-            text='Benachrichtigung:',
-            size_hint=(0.6, 1)
-        )
-        self.notify_spinner = Spinner(
+        self.notify_spinner = StyledSpinner(
             text='Nichts',
             values=('Nichts', 'Nur E-Mail', 'Nur Telegram', 'E-Mail + Telegram'),
-            size_hint=(0.4, 1)
+            font_size=theme.FONT_BODY,
+            size_hint=(0.5, 1)
         )
-        notify_layout.add_widget(lbl_notify)
-        notify_layout.add_widget(self.notify_spinner)
 
-        email_choice_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.15)
-        )
-        lbl_email_choice = Label(
-            text='Empfänger wählen:',
-            size_hint=(0.6, 1)
-        )
-        self.email_recipients_spinner = Spinner(
+        self.email_recipients_spinner = StyledSpinner(
             text='Manuell',
             values=('Manuell', 'Arzt', 'Kontakt 1', 'Kontakt 2'),
-            size_hint=(0.4, 1)
+            font_size=theme.FONT_BODY,
+            size_hint=(0.5, 1)
         )
         self.email_recipients_spinner.bind(text=self.on_email_recipient_changed)
 
-        email_choice_layout.add_widget(lbl_email_choice)
-        email_choice_layout.add_widget(self.email_recipients_spinner)
-
-        email_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.15)
-        )
-        lbl_email = Label(
-            text='E-Mail Empfänger:',
-            size_hint=(0.6, 1)
-        )
-        self.email_to_input = TextInput(
+        self.email_to_input = StyledTextInput(
             multiline=False,
-            size_hint=(0.4, 1)
+            font_size=theme.FONT_BODY,
+            size_hint=(0.5, 1)
         )
-        email_layout.add_widget(lbl_email)
-        email_layout.add_widget(self.email_to_input)
 
-        telegram_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.15)
-        )
-        lbl_tg = Label(
-            text='Telegram Chat-ID:',
-            size_hint=(0.6, 1)
-        )
-        self.telegram_chat_id_input = TextInput(
+        self.telegram_chat_id_input = StyledTextInput(
             multiline=False,
-            size_hint=(0.4, 1)
+            font_size=theme.FONT_BODY,
+            size_hint=(0.5, 1)
         )
-        telegram_layout.add_widget(lbl_tg)
-        telegram_layout.add_widget(self.telegram_chat_id_input)
 
-        btn_test = Button(
+        btn_test = PrimaryButton(
             text='Testnachricht senden',
-            size_hint=(1, 0.15)
+            font_size=theme.FONT_LARGE,
+            size_hint=(1, None),
+            height=theme.BUTTON_HEIGHT
         )
         btn_test.bind(on_press=self.sende_testnachricht)
 
-        btn_speichern = Button(
+        btn_speichern = SuccessButton(
             text='Einstellungen speichern',
-            size_hint=(1, 0.15)
+            font_size=theme.FONT_LARGE,
+            size_hint=(1, None),
+            height=theme.BUTTON_HEIGHT
         )
         btn_speichern.bind(on_press=self.speichern_einstellungen)
 
-        btn_back = Button(
+        btn_back = SecondaryButton(
             text='Zurück zum Hauptmenü',
-            size_hint=(1, 0.15)
+            font_size=theme.FONT_LARGE,
+            size_hint=(1, None),
+            height=theme.BUTTON_HEIGHT
         )
         btn_back.bind(on_press=self.zurueck_zum_menue)
 
         layout.add_widget(titel_layout)
-        layout.add_widget(alarm_delay_layout)
-        layout.add_widget(alarm_mode_layout)
-        layout.add_widget(notify_layout)
-        layout.add_widget(email_choice_layout)
-        layout.add_widget(email_layout)
-        layout.add_widget(telegram_layout)
+        layout.add_widget(field_row('Zeit bis Alarm (Min.):', self.alarm_delay_input))
+        layout.add_widget(field_row('Art des Alarms:', self.alarm_mode_spinner))
+        layout.add_widget(field_row('Benachrichtigung:', self.notify_spinner))
+        layout.add_widget(field_row('Empfänger wählen:', self.email_recipients_spinner))
+        layout.add_widget(field_row('E-Mail Empfänger:', self.email_to_input))
+        layout.add_widget(field_row('Telegram Chat-ID:', self.telegram_chat_id_input))
         layout.add_widget(btn_speichern)
         layout.add_widget(btn_test)
         layout.add_widget(btn_back)
@@ -212,16 +165,16 @@ class SettingsScreen(Screen):
             '   ob alles klappt.'
         )
 
-        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
-        label = Label(
+        label = BodyLabel(
             text=info_text,
+            font_size=theme.FONT_SMALL,
             halign='left',
             valign='top'
         )
-        label.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
 
-        btn_ok = Button(
+        btn_ok = PrimaryButton(
             text='Schliessen',
             size_hint=(1, 0.2)
         )
@@ -229,12 +182,7 @@ class SettingsScreen(Screen):
         layout.add_widget(label)
         layout.add_widget(btn_ok)
 
-        popup = Popup(
-            title='Hilfe zu Benachrichtigungen',
-            content=layout,
-            size_hint=(0.9, 0.8),
-            auto_dismiss=False
-        )
+        popup = make_popup(title='Hilfe zu Benachrichtigungen', content=layout, size_hint=(0.9, 0.8))
 
         btn_ok.bind(on_press=popup.dismiss)
         popup.open()

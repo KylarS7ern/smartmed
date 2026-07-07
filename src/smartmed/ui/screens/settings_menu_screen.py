@@ -1,21 +1,28 @@
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
-from kivy.uix.textinput import TextInput
 
 from smartmed.services.admin_pin_service import (
     has_admin_pin,
     verify_admin_pin,
 )
+from smartmed.services.security_service import hash_secret
 
+from smartmed.ui import theme
 from smartmed.ui.navigation import (
     go_to_menu,
     go_to_settings,
     go_to_settings_advanced,
     go_to_settings_patient,
+)
+from smartmed.ui.widgets import (
+    BodyLabel,
+    PrimaryButton,
+    SecondaryButton,
+    StyledTextInput,
+    SuccessButton,
+    TitleLabel,
+    make_popup,
 )
 
 
@@ -23,30 +30,19 @@ class SettingsMenuScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
-        titel = Label(
+        titel = TitleLabel(
             text='Einstellungen',
-            font_size='24sp',
-            size_hint=(1, 0.2)
+            size_hint=(1, 0.18)
         )
 
-        btn_patient = Button(
-            text='Patienten-Einstellungen',
-            size_hint=(1, 0.2)
-        )
-        btn_alarm = Button(
-            text='Alarm-Einstellungen',
-            size_hint=(1, 0.2)
-        )
-        btn_advanced = Button(
-            text='Erweiterte Einstellungen',
-            size_hint=(1, 0.2)
-        )
-        btn_back = Button(
-            text='Zurück zum Hauptmenü',
-            size_hint=(1, 0.2)
-        )
+        btn_kwargs = dict(font_size=theme.FONT_LARGE, size_hint=(1, 0.18))
+
+        btn_patient = PrimaryButton(text='Patienten-Einstellungen', **btn_kwargs)
+        btn_alarm = PrimaryButton(text='Alarm-Einstellungen', **btn_kwargs)
+        btn_advanced = PrimaryButton(text='Erweiterte Einstellungen', **btn_kwargs)
+        btn_back = SecondaryButton(text='Zurück zum Hauptmenü', **btn_kwargs)
 
         btn_patient.bind(on_press=self.zeige_patient)
         btn_alarm.bind(on_press=self.zeige_alarm)
@@ -62,8 +58,7 @@ class SettingsMenuScreen(Screen):
         self.add_widget(layout)
 
     def zeige_patient(self, instance):
-        app = App.get_running_app()
-        go_to_settings_patient(app)
+        self._check_admin_pin_and_open('settings_patient')
 
     def zeige_alarm(self, instance):
         self._check_admin_pin_and_open('settings')
@@ -77,6 +72,8 @@ class SettingsMenuScreen(Screen):
             go_to_settings(app)
         elif target_screen_name == 'settings_advanced':
             go_to_settings_advanced(app)
+        elif target_screen_name == 'settings_patient':
+            go_to_settings_patient(app)
 
     def _check_admin_pin_and_open(self, target_screen_name):
         """Prüfen, ob Admin-PIN gesetzt ist und ggf. abfragen."""
@@ -87,16 +84,15 @@ class SettingsMenuScreen(Screen):
             self._open_target_screen(app, target_screen_name)
             return
 
-        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
-        label = Label(
+        label = BodyLabel(
             text='Bitte Admin-PIN eingeben:',
             halign='center',
             valign='middle'
         )
-        label.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
 
-        pin_input = TextInput(
+        pin_input = StyledTextInput(
             multiline=False,
             password=True,
             size_hint=(1, 0.4)
@@ -104,11 +100,11 @@ class SettingsMenuScreen(Screen):
 
         btn_layout = BoxLayout(
             orientation='horizontal',
-            spacing=10,
+            spacing=theme.SPACING,
             size_hint=(1, 0.3)
         )
-        btn_ok = Button(text='OK')
-        btn_cancel = Button(text='Abbrechen')
+        btn_ok = SuccessButton(text='OK')
+        btn_cancel = SecondaryButton(text='Abbrechen')
         btn_layout.add_widget(btn_ok)
         btn_layout.add_widget(btn_cancel)
 
@@ -116,17 +112,15 @@ class SettingsMenuScreen(Screen):
         layout.add_widget(pin_input)
         layout.add_widget(btn_layout)
 
-        popup = Popup(
-            title='PIN-Schutz',
-            content=layout,
-            size_hint=(0.8, 0.5),
-            auto_dismiss=False
-        )
+        popup = make_popup(title='PIN-Schutz', content=layout, size_hint=(0.8, 0.5))
 
         def on_ok(_inst):
             result = verify_admin_pin(pin, pin_input.text)
 
             if result['ok']:
+                if result.get('needs_rehash'):
+                    app.admin_pin = hash_secret(pin_input.text.strip())
+                    app.save_data()
                 popup.dismiss()
                 self._open_target_screen(app, target_screen_name)
             else:
@@ -136,7 +130,7 @@ class SettingsMenuScreen(Screen):
         btn_cancel.bind(on_press=lambda *_: popup.dismiss())
 
         popup.open()
-    
+
     def zurueck_zum_menue(self, instance):
         app = App.get_running_app()
         go_to_menu(app)

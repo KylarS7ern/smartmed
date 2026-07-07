@@ -1,13 +1,26 @@
 from kivy.app import App
+from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
 
+from smartmed.ui import theme
 from smartmed.ui.navigation import go_to_menu, go_to_plan_edit
-from smartmed.services.plan_service import delete_plan_entry
+from smartmed.ui.widgets import (
+    BodyLabel,
+    DangerButton,
+    MutedLabel,
+    PrimaryButton,
+    SecondaryButton,
+    SuccessButton,
+    TitleLabel,
+    make_popup,
+)
+from smartmed.services.plan_service import (
+    delete_plan_entry,
+    format_plan_entry_summary,
+    plan_entry_sort_key,
+)
 
 
 class PlanListScreen(Screen):
@@ -16,12 +29,11 @@ class PlanListScreen(Screen):
 
         self.anzeige_eintraege = []
 
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
-        titel = Label(
+        titel = TitleLabel(
             text='Einnahmeplan',
-            font_size='24sp',
-            size_hint=(1, 0.15)
+            size_hint=(1, 0.13)
         )
 
         scroll = ScrollView(
@@ -31,7 +43,7 @@ class PlanListScreen(Screen):
         self.list_layout = BoxLayout(
             orientation='vertical',
             size_hint_y=None,
-            spacing=5
+            spacing=theme.SPACING
         )
 
         self.list_layout.bind(
@@ -40,15 +52,17 @@ class PlanListScreen(Screen):
 
         scroll.add_widget(self.list_layout)
 
-        btn_neu = Button(
+        btn_neu = PrimaryButton(
             text='Neuen Eintrag anlegen',
-            size_hint=(1, 0.1)
+            font_size=theme.FONT_LARGE,
+            size_hint=(1, 0.11)
         )
         btn_neu.bind(on_press=self.neuer_eintrag)
 
-        btn_back = Button(
+        btn_back = SecondaryButton(
             text='Zurück zum Hauptmenü',
-            size_hint=(1, 0.1)
+            font_size=theme.FONT_LARGE,
+            size_hint=(1, 0.11)
         )
         btn_back.bind(on_press=self.zurueck_zum_menue)
 
@@ -68,49 +82,32 @@ class PlanListScreen(Screen):
         self.anzeige_eintraege = []
 
         if not plan:
-            hinweis = Label(
+            hinweis = MutedLabel(
                 text='Keine Einträge vorhanden.',
                 halign='left',
                 valign='top',
                 size_hint_y=None,
-                height=40
+                height=dp(40)
             )
-            hinweis.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
             self.list_layout.add_widget(hinweis)
             return
 
-        wochentage_reihenfolge = {
-            'Mo': 0, 'Di': 1, 'Mi': 2,
-            'Do': 3, 'Fr': 4, 'Sa': 5, 'So': 6
-        }
-
-        def sort_key(e):
-            tag = e.get('tag', '')
-            idx = wochentage_reihenfolge.get(tag, 99)
-            zeit = e.get('zeit', '')
-            return (idx, zeit)
-
-        plan_sortiert = sorted(plan, key=sort_key)
+        plan_sortiert = sorted(plan, key=plan_entry_sort_key)
         self.anzeige_eintraege = plan_sortiert
 
         for index, e in enumerate(plan_sortiert):
-            tag = e.get('tag', '')
-            zeit = e.get('zeit', '')
-            fach = e.get('fach', '')
-            med = e.get('medikament', '')
-            anzahl = e.get('anzahl', 1)
+            text = format_plan_entry_summary(e)
 
-            text = f"{tag} {zeit} | Fach {fach} | {med} (x{anzahl})"
-
-            btn = Button(
+            btn = PrimaryButton(
                 text=text,
+                font_size=theme.FONT_BODY,
                 size_hint_y=None,
-                height=60,
-                halign='left'
+                height=dp(68),
+                halign='center'
             )
 
             btn.bind(
-                size=lambda inst, val: setattr(inst, 'text_size', (val[0] - 20, None))
+                size=lambda inst, val: setattr(inst, 'text_size', (val[0] - dp(40), None))
             )
 
             btn.bind(on_press=lambda inst, idx=index: self.eintrag_geklickt(idx))
@@ -125,32 +122,21 @@ class PlanListScreen(Screen):
             return
 
         eintrag = self.anzeige_eintraege[index]
-        med = eintrag.get('medikament', '')
-        fach = eintrag.get('fach', '')
-        tag = eintrag.get('tag', '')
-        zeit = eintrag.get('zeit', '')
-        anzahl = eintrag.get('anzahl', 1)
+        text = format_plan_entry_summary(eintrag).replace(' | ', '\n')
 
-        text = (
-            f"{tag} {zeit}\n"
-            f"Fach {fach}\n"
-            f"{med} (x{anzahl})"
-        )
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
-        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
-
-        label = Label(
+        label = BodyLabel(
             text=text,
             halign='center',
             valign='middle'
         )
-        label.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
 
-        btn_layout = BoxLayout(orientation='horizontal', spacing=10, size_hint=(1, 0.3))
+        btn_layout = BoxLayout(orientation='horizontal', spacing=theme.SPACING, size_hint=(1, 0.3))
 
-        btn_bearbeiten = Button(text='Bearbeiten')
-        btn_loeschen = Button(text='Löschen')
-        btn_abbrechen = Button(text='Abbrechen')
+        btn_bearbeiten = PrimaryButton(text='Bearbeiten')
+        btn_loeschen = DangerButton(text='Löschen')
+        btn_abbrechen = SecondaryButton(text='Abbrechen')
 
         btn_layout.add_widget(btn_bearbeiten)
         btn_layout.add_widget(btn_loeschen)
@@ -159,14 +145,9 @@ class PlanListScreen(Screen):
         layout.add_widget(label)
         layout.add_widget(btn_layout)
 
-        popup = Popup(
-            title='Eintrag',
-            content=layout,
-            size_hint=(0.85, 0.5),
-            auto_dismiss=False
-        )
+        popup = make_popup(title='Eintrag', content=layout, size_hint=(0.85, 0.5))
 
-        def loeschen(_instance):
+        def loeschen_bestaetigt(_instance):
             result = delete_plan_entry(
                 plan_eintraege=app.plan_eintraege,
                 eintrag=eintrag,
@@ -182,14 +163,52 @@ class PlanListScreen(Screen):
             self.update_liste()
             popup.dismiss()
 
+        def loeschen_nachfragen(_instance):
+            popup.dismiss()
+            self._zeige_loesch_bestaetigung(eintrag, loeschen_bestaetigt)
+
         def bearbeiten(_instance):
             app = App.get_running_app()
             popup.dismiss()
             go_to_plan_edit(app, eintrag)
 
-        btn_loeschen.bind(on_press=loeschen)
+        btn_loeschen.bind(on_press=loeschen_nachfragen)
         btn_bearbeiten.bind(on_press=bearbeiten)
         btn_abbrechen.bind(on_press=lambda *_: popup.dismiss())
+
+        popup.open()
+
+    def _zeige_loesch_bestaetigung(self, eintrag, on_bestaetigt):
+        """Zweite, ausdrückliche Sicherheitsabfrage vor dem endgültigen Löschen."""
+        text = format_plan_entry_summary(eintrag)
+
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
+
+        label = BodyLabel(
+            text=f"Eintrag wirklich endgültig löschen?\n\n{text}",
+            halign='center',
+            valign='middle'
+        )
+
+        btn_layout = BoxLayout(orientation='horizontal', spacing=theme.SPACING, size_hint=(1, 0.3))
+
+        btn_ja = DangerButton(text='Ja, löschen')
+        btn_nein = SecondaryButton(text='Nein')
+
+        btn_layout.add_widget(btn_ja)
+        btn_layout.add_widget(btn_nein)
+
+        layout.add_widget(label)
+        layout.add_widget(btn_layout)
+
+        popup = make_popup(title='Löschen bestätigen', content=layout, size_hint=(0.85, 0.5))
+
+        def ja(_instance):
+            popup.dismiss()
+            on_bestaetigt(None)
+
+        btn_ja.bind(on_press=ja)
+        btn_nein.bind(on_press=lambda *_: popup.dismiss())
 
         popup.open()
 

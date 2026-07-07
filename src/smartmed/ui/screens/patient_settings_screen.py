@@ -1,244 +1,104 @@
 from kivy.app import App
+from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
-from kivy.uix.textinput import TextInput
+from kivy.uix.scrollview import ScrollView
 
+from smartmed.ui import theme
 from smartmed.ui.navigation import go_to_settings_menu
+from smartmed.ui.widgets import (
+    BodyLabel,
+    SecondaryButton,
+    StyledTextInput,
+    SuccessButton,
+    TitleLabel,
+    field_row,
+)
 from smartmed.services.patient_profile_service import (
     apply_patient_profile_update,
     build_patient_form_data,
     build_patient_profile_update,
 )
 
+
 class PatientSettingsScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        outer = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
-        titel = Label(
+        titel = TitleLabel(
             text='Patienten-Einstellungen',
-            font_size='24sp',
-            size_hint=(1, 0.15)
+            font_size=theme.FONT_XLARGE,
+            size_hint=(1, None),
+            height=dp(48)
         )
 
-        name_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.1)
-        )
-        lbl_name = Label(
-            text='Name:',
-            size_hint=(0.4, 1)
-        )
-        self.name_input = TextInput(
-            multiline=False,
-            size_hint=(0.6, 1)
-        )
-        name_layout.add_widget(lbl_name)
-        name_layout.add_widget(self.name_input)
+        scroll = ScrollView(size_hint=(1, 1))
+        form = BoxLayout(orientation='vertical', spacing=theme.SPACING, size_hint_y=None)
+        form.bind(minimum_height=form.setter('height'))
 
-        geburt_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.1)
-        )
-        lbl_geburt = Label(
-            text='Geburtsdatum:',
-            size_hint=(0.4, 1)
-        )
-        self.geburt_input = TextInput(
-            multiline=False,
-            size_hint=(0.6, 1)
-        )
-        geburt_layout.add_widget(lbl_geburt)
-        geburt_layout.add_widget(self.geburt_input)
+        self.name_input = StyledTextInput(multiline=False, font_size=theme.FONT_BODY)
+        self.geburt_input = StyledTextInput(multiline=False, font_size=theme.FONT_BODY)
 
-        lbl_address = Label(
+        lbl_address = BodyLabel(
             text='Adresse:',
-            size_hint=(1, 0.1)
+            font_size=theme.FONT_SMALL,
+            size_hint=(1, None),
+            height=dp(28)
         )
-        self.address_input = TextInput(
-            multiline=True,
-            size_hint=(1, 0.25)
-        )
+        self.address_input = StyledTextInput(multiline=True, font_size=theme.FONT_BODY, size_hint=(1, None), height=dp(90))
 
-        doc_name_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.1)
-        )
-        lbl_doc_name = Label(
-            text='Arzt (Name):',
-            size_hint=(0.4, 1)
-        )
-        self.doc_name_input = TextInput(
-            multiline=False,
-            size_hint=(0.6, 1)
-        )
-        doc_name_layout.add_widget(lbl_doc_name)
-        doc_name_layout.add_widget(self.doc_name_input)
+        self.doc_name_input = StyledTextInput(multiline=False, font_size=theme.FONT_BODY)
+        self.doc_email_input = StyledTextInput(multiline=False, font_size=theme.FONT_BODY)
+        self.doc_phone_input = StyledTextInput(multiline=False, font_size=theme.FONT_BODY)
 
-        doc_email_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.1)
-        )
-        lbl_doc_email = Label(
-            text='Arzt E-Mail:',
-            size_hint=(0.4, 1)
-        )
-        self.doc_email_input = TextInput(
-            multiline=False,
-            size_hint=(0.6, 1)
-        )
-        doc_email_layout.add_widget(lbl_doc_email)
-        doc_email_layout.add_widget(self.doc_email_input)
+        self.c1_name_input = StyledTextInput(multiline=False, font_size=theme.FONT_BODY)
+        self.c1_email_input = StyledTextInput(multiline=False, font_size=theme.FONT_BODY)
+        self.c1_phone_input = StyledTextInput(multiline=False, font_size=theme.FONT_BODY)
 
-        doc_phone_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.1)
-        )
-        lbl_doc_phone = Label(
-            text='Arzt Telefon:',
-            size_hint=(0.4, 1)
-        )
-        self.doc_phone_input = TextInput(
-            multiline=False,
-            size_hint=(0.6, 1)
-        )
-        doc_phone_layout.add_widget(lbl_doc_phone)
-        doc_phone_layout.add_widget(self.doc_phone_input)
+        self.c2_name_input = StyledTextInput(multiline=False, font_size=theme.FONT_BODY)
+        self.c2_email_input = StyledTextInput(multiline=False, font_size=theme.FONT_BODY)
+        self.c2_phone_input = StyledTextInput(multiline=False, font_size=theme.FONT_BODY)
 
-        c1_name_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.1)
-        )
-        lbl_c1_name = Label(
-            text='Kontakt 1 Name:',
-            size_hint=(0.4, 1)
-        )
-        self.c1_name_input = TextInput(
-            multiline=False,
-            size_hint=(0.6, 1)
-        )
-        c1_name_layout.add_widget(lbl_c1_name)
-        c1_name_layout.add_widget(self.c1_name_input)
+        form.add_widget(field_row('Name:', self.name_input))
+        form.add_widget(field_row('Geburtsdatum:', self.geburt_input))
+        form.add_widget(lbl_address)
+        form.add_widget(self.address_input)
+        form.add_widget(field_row('Arzt (Name):', self.doc_name_input))
+        form.add_widget(field_row('Arzt E-Mail:', self.doc_email_input))
+        form.add_widget(field_row('Arzt Telefon:', self.doc_phone_input))
+        form.add_widget(field_row('Kontakt 1 Name:', self.c1_name_input))
+        form.add_widget(field_row('Kontakt 1 E-Mail:', self.c1_email_input))
+        form.add_widget(field_row('Kontakt 1 Telefon:', self.c1_phone_input))
+        form.add_widget(field_row('Kontakt 2 Name:', self.c2_name_input))
+        form.add_widget(field_row('Kontakt 2 E-Mail:', self.c2_email_input))
+        form.add_widget(field_row('Kontakt 2 Telefon:', self.c2_phone_input))
 
-        c1_email_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.1)
-        )
-        lbl_c1_email = Label(
-            text='Kontakt 1 E-Mail:',
-            size_hint=(0.4, 1)
-        )
-        self.c1_email_input = TextInput(
-            multiline=False,
-            size_hint=(0.6, 1)
-        )
-        c1_email_layout.add_widget(lbl_c1_email)
-        c1_email_layout.add_widget(self.c1_email_input)
+        scroll.add_widget(form)
 
-        c1_phone_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.1)
-        )
-        lbl_c1_phone = Label(
-            text='Kontakt 1 Telefon:',
-            size_hint=(0.4, 1)
-        )
-        self.c1_phone_input = TextInput(
-            multiline=False,
-            size_hint=(0.6, 1)
-        )
-        c1_phone_layout.add_widget(lbl_c1_phone)
-        c1_phone_layout.add_widget(self.c1_phone_input)
-
-        c2_name_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.1)
-        )
-        lbl_c2_name = Label(
-            text='Kontakt 2 Name:',
-            size_hint=(0.4, 1)
-        )
-        self.c2_name_input = TextInput(
-            multiline=False,
-            size_hint=(0.6, 1)
-        )
-        c2_name_layout.add_widget(lbl_c2_name)
-        c2_name_layout.add_widget(self.c2_name_input)
-
-        c2_email_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.1)
-        )
-        lbl_c2_email = Label(
-            text='Kontakt 2 E-Mail:',
-            size_hint=(0.4, 1)
-        )
-        self.c2_email_input = TextInput(
-            multiline=False,
-            size_hint=(0.6, 1)
-        )
-        c2_email_layout.add_widget(lbl_c2_email)
-        c2_email_layout.add_widget(self.c2_email_input)
-
-        c2_phone_layout = BoxLayout(
-            orientation='horizontal',
-            spacing=10,
-            size_hint=(1, 0.1)
-        )
-        lbl_c2_phone = Label(
-            text='Kontakt 2 Telefon:',
-            size_hint=(0.4, 1)
-        )
-        self.c2_phone_input = TextInput(
-            multiline=False,
-            size_hint=(0.6, 1)
-        )
-        c2_phone_layout.add_widget(lbl_c2_phone)
-        c2_phone_layout.add_widget(self.c2_phone_input)
-
-        btn_speichern = Button(
+        btn_speichern = SuccessButton(
             text='Patientendaten speichern',
-            size_hint=(1, 0.12)
+            font_size=theme.FONT_LARGE,
+            size_hint=(1, None),
+            height=theme.BUTTON_HEIGHT
         )
         btn_speichern.bind(on_press=self.speichern_patient)
 
-        btn_back = Button(
+        btn_back = SecondaryButton(
             text='Zurück',
-            size_hint=(1, 0.2)
+            font_size=theme.FONT_LARGE,
+            size_hint=(1, None),
+            height=theme.BUTTON_HEIGHT
         )
         btn_back.bind(on_press=self.zurueck)
 
-        layout.add_widget(titel)
-        layout.add_widget(name_layout)
-        layout.add_widget(geburt_layout)
-        layout.add_widget(lbl_address)
-        layout.add_widget(self.address_input)
-        layout.add_widget(doc_name_layout)
-        layout.add_widget(doc_email_layout)
-        layout.add_widget(doc_phone_layout)
-        layout.add_widget(c1_name_layout)
-        layout.add_widget(c1_email_layout)
-        layout.add_widget(c1_phone_layout)
-        layout.add_widget(c2_name_layout)
-        layout.add_widget(c2_email_layout)
-        layout.add_widget(c2_phone_layout)
-        layout.add_widget(btn_speichern)
-        layout.add_widget(btn_back)
+        outer.add_widget(titel)
+        outer.add_widget(scroll)
+        outer.add_widget(btn_speichern)
+        outer.add_widget(btn_back)
 
-        self.add_widget(layout)
+        self.add_widget(outer)
 
     def on_pre_enter(self, *args):
         """Beim Öffnen aktuelle Daten laden."""

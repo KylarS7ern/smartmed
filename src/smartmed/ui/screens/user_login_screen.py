@@ -1,13 +1,21 @@
 from kivy.app import App
+from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
-from kivy.uix.textinput import TextInput
 
+from smartmed.ui import theme
 from smartmed.ui.navigation import go_to_menu
+from smartmed.ui.widgets import (
+    BodyLabel,
+    DangerButton,
+    PrimaryButton,
+    SecondaryButton,
+    StyledTextInput,
+    SuccessButton,
+    TitleLabel,
+    make_popup,
+)
 
 from smartmed.services.user_account_service import (
     create_user_result,
@@ -15,17 +23,17 @@ from smartmed.services.user_account_service import (
     user_requires_password,
     verify_user_password,
 )
+from smartmed.services.security_service import hash_secret
 
 
 class UserLoginScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        root = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        root = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
-        titel = Label(
+        titel = TitleLabel(
             text='Benutzer auswählen',
-            font_size='24sp',
             size_hint=(1, 0.15)
         )
 
@@ -33,7 +41,7 @@ class UserLoginScreen(Screen):
         self.user_list_layout = BoxLayout(
             orientation='vertical',
             size_hint_y=None,
-            spacing=5
+            spacing=theme.SPACING
         )
         self.user_list_layout.bind(
             minimum_height=self.user_list_layout.setter('height')
@@ -43,11 +51,11 @@ class UserLoginScreen(Screen):
         btn_row = BoxLayout(
             orientation='horizontal',
             size_hint=(1, 0.15),
-            spacing=10
+            spacing=theme.SPACING
         )
 
-        btn_new = Button(text='Neuen Benutzer anlegen')
-        btn_exit = Button(text='App beenden')
+        btn_new = PrimaryButton(text='Neuen Benutzer anlegen')
+        btn_exit = SecondaryButton(text='App beenden')
 
         btn_new.bind(on_press=self.neuen_benutzer)
         btn_exit.bind(on_press=self.app_beenden_bestaetigen)
@@ -62,23 +70,22 @@ class UserLoginScreen(Screen):
         self.add_widget(root)
 
     def app_beenden_bestaetigen(self, instance):
-        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
-        label = Label(
+        label = BodyLabel(
             text='App wirklich beenden?',
             halign='center',
             valign='middle'
         )
-        label.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
 
         btn_layout = BoxLayout(
             orientation='horizontal',
-            spacing=10,
+            spacing=theme.SPACING,
             size_hint=(1, 0.35)
         )
 
-        btn_yes = Button(text='Ja')
-        btn_no = Button(text='Nein')
+        btn_yes = DangerButton(text='Ja')
+        btn_no = SecondaryButton(text='Nein')
 
         btn_layout.add_widget(btn_yes)
         btn_layout.add_widget(btn_no)
@@ -86,12 +93,7 @@ class UserLoginScreen(Screen):
         layout.add_widget(label)
         layout.add_widget(btn_layout)
 
-        popup = Popup(
-            title='Beenden',
-            content=layout,
-            size_hint=(0.7, 0.35),
-            auto_dismiss=False
-        )
+        popup = make_popup(title='Beenden', content=layout, size_hint=(0.7, 0.35))
 
         btn_yes.bind(on_press=lambda *_: App.get_running_app().stop())
         btn_no.bind(on_press=lambda *_: popup.dismiss())
@@ -105,10 +107,11 @@ class UserLoginScreen(Screen):
         self.user_list_layout.clear_widgets()
 
         for username in list_sorted_usernames(app.users):
-            btn = Button(
+            btn = PrimaryButton(
                 text=username,
+                font_size=theme.FONT_XLARGE,
                 size_hint_y=None,
-                height=50
+                height=dp(72)
             )
             btn.bind(on_press=lambda inst, name=username: self.login_benutzer(name))
             self.user_list_layout.add_widget(btn)
@@ -122,16 +125,15 @@ class UserLoginScreen(Screen):
             go_to_menu(app)
             return
 
-        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
-        label = Label(
+        label = BodyLabel(
             text=f'Passwort für "{username}" eingeben:',
             halign='center',
             valign='middle'
         )
-        label.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
 
-        pw_input = TextInput(
+        pw_input = StyledTextInput(
             multiline=False,
             password=True,
             size_hint=(1, 0.4)
@@ -139,11 +141,11 @@ class UserLoginScreen(Screen):
 
         btn_layout = BoxLayout(
             orientation='horizontal',
-            spacing=10,
+            spacing=theme.SPACING,
             size_hint=(1, 0.3)
         )
-        btn_ok = Button(text='OK')
-        btn_cancel = Button(text='Abbrechen')
+        btn_ok = SuccessButton(text='OK')
+        btn_cancel = SecondaryButton(text='Abbrechen')
         btn_layout.add_widget(btn_ok)
         btn_layout.add_widget(btn_cancel)
 
@@ -151,12 +153,7 @@ class UserLoginScreen(Screen):
         layout.add_widget(pw_input)
         layout.add_widget(btn_layout)
 
-        popup = Popup(
-            title='Anmeldung',
-            content=layout,
-            size_hint=(0.8, 0.5),
-            auto_dismiss=False
-        )
+        popup = make_popup(title='Anmeldung', content=layout, size_hint=(0.8, 0.5))
 
         def on_ok(_inst):
             result = verify_user_password(
@@ -166,6 +163,8 @@ class UserLoginScreen(Screen):
             )
 
             if result['ok']:
+                if result.get('needs_rehash'):
+                    app.users[username]['password'] = hash_secret(pw_input.text)
                 popup.dismiss()
                 app.switch_user(username)
                 go_to_menu(app)
@@ -181,31 +180,29 @@ class UserLoginScreen(Screen):
         """Popup zum Anlegen eines neuen Benutzers."""
         app = App.get_running_app()
 
-        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
-        lbl_name = Label(
+        lbl_name = BodyLabel(
             text='Benutzername:',
             halign='left',
             valign='middle'
         )
-        lbl_name.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
-        name_input = TextInput(multiline=False)
+        name_input = StyledTextInput(multiline=False)
 
-        lbl_pw = Label(
+        lbl_pw = BodyLabel(
             text='Passwort (optional):',
             halign='left',
             valign='middle'
         )
-        lbl_pw.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
-        pw_input = TextInput(multiline=False, password=True)
+        pw_input = StyledTextInput(multiline=False, password=True)
 
         btn_layout = BoxLayout(
             orientation='horizontal',
-            spacing=10,
+            spacing=theme.SPACING,
             size_hint=(1, 0.3)
         )
-        btn_ok = Button(text='Anlegen')
-        btn_cancel = Button(text='Abbrechen')
+        btn_ok = SuccessButton(text='Anlegen')
+        btn_cancel = SecondaryButton(text='Abbrechen')
         btn_layout.add_widget(btn_ok)
         btn_layout.add_widget(btn_cancel)
 
@@ -215,12 +212,7 @@ class UserLoginScreen(Screen):
         layout.add_widget(pw_input)
         layout.add_widget(btn_layout)
 
-        popup = Popup(
-            title='Neuen Benutzer',
-            content=layout,
-            size_hint=(0.85, 0.6),
-            auto_dismiss=False
-        )
+        popup = make_popup(title='Neuen Benutzer', content=layout, size_hint=(0.85, 0.6))
 
         def on_ok(_inst):
             result = create_user_result(

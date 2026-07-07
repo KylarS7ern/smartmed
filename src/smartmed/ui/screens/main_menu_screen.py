@@ -1,9 +1,8 @@
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 
+from smartmed.ui import theme
 from smartmed.ui.navigation import (
     go_to_log,
     go_to_login,
@@ -11,25 +10,27 @@ from smartmed.ui.navigation import (
     go_to_settings_menu,
     go_to_status,
 )
+from smartmed.ui.widgets import PrimaryButton, SecondaryButton, TitleLabel
 
 
 class MainMenuScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
-        titel = Label(
+        titel = TitleLabel(
             text='Hauptmenü',
-            font_size='28sp',
-            size_hint=(1, 0.2)
+            size_hint=(1, 0.18)
         )
 
-        btn_status = Button(text='Status anzeigen', size_hint=(1, 0.15))
-        btn_plan = Button(text='Einnahmeplan', size_hint=(1, 0.15))
-        btn_settings = Button(text='Einstellungen', size_hint=(1, 0.15))
-        btn_log = Button(text='Log anzeigen', size_hint=(1, 0.15))
-        btn_back = Button(text='Benutzer wechseln', size_hint=(1, 0.15))
+        btn_kwargs = dict(font_size=theme.FONT_XLARGE, size_hint=(1, 0.15))
+
+        btn_status = PrimaryButton(text='Status anzeigen', **btn_kwargs)
+        btn_plan = PrimaryButton(text='Einnahmeplan', **btn_kwargs)
+        btn_settings = PrimaryButton(text='Einstellungen', **btn_kwargs)
+        btn_log = PrimaryButton(text='Log anzeigen', **btn_kwargs)
+        btn_back = SecondaryButton(text='Benutzer wechseln', **btn_kwargs)
 
         btn_status.bind(on_press=self.zeige_status)
         btn_plan.bind(on_press=self.zeige_plan)

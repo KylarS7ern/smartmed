@@ -24,9 +24,7 @@ def go_to_plan_list(app):
 
 
 def go_to_log(app):
-    """Log-Screen vorbereiten und anzeigen."""
-    log_screen = app.root.get_screen('log')
-    log_screen.update_log()
+    """Log-Screen anzeigen (aktualisiert sich selbst über on_pre_enter)."""
     app.root.current = 'log'
 
 
