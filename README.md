@@ -52,7 +52,11 @@ Ziel ist eine saubere, wartbare und erweiterbare Finalsoftware für einen Medika
 
 ### 1. Ins Projekt wechseln
 
-    cd ~/projects/smartmed
+    cd <dein-projektordner>
+
+Der Ordner kann beliebig heissen/liegen (z.B. `~/smartmed` oder
+`~/projects/smartmed`) - alle Skripte ermitteln ihren Pfad automatisch
+relativ zu sich selbst.
 
 ### 2. Virtuelle Umgebung aktivieren
 
@@ -134,14 +138,15 @@ mit Autologin), gibt es einen XDG-Autostart-Eintrag.
 
 ### Einmalig einrichten
 
-    cd ~/projects/smartmed
+    cd <dein-projektordner>
     ./scripts/install_autostart.sh
 
-Das kopiert `scripts/smartmed-autostart.desktop` nach `~/.config/autostart/`
-und macht die Start-Skripte ausführbar. Beim nächsten Neustart/Login startet
-die App automatisch über `scripts/run_pi_resilient.sh` (wartet kurz auf die
-USB/Serial-Enumeration und startet die App bei einem unerwarteten Absturz neu;
-Log dazu in `logs/autostart.log`).
+Das erzeugt einen Autostart-Eintrag unter `~/.config/autostart/` (mit dem
+tatsächlichen Pfad zu diesem Projektordner) und macht die Start-Skripte
+ausführbar. Beim nächsten Neustart/Login startet die App automatisch über
+`scripts/run_pi_resilient.sh` (wartet kurz auf die USB/Serial-Enumeration und
+startet die App bei einem unerwarteten Absturz neu; Log dazu in
+`logs/autostart.log`).
 
 ### Wieder deaktivieren
 
