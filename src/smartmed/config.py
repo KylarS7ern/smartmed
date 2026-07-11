@@ -82,7 +82,16 @@ os.environ.setdefault("KIVY_METRICS_DENSITY", str(TARGET_SCREEN_DPI / 160))
 # Arduino / serielle Kommunikation
 ARDUINO_PORT = os.getenv("SMARTMED_ARDUINO_PORT", "/dev/ttyACM0")
 ARDUINO_BAUDRATE = _env_int("SMARTMED_ARDUINO_BAUDRATE", 115200)
-ARDUINO_TIMEOUT = _env_float("SMARTMED_ARDUINO_TIMEOUT", 1.0)
+# Timeout für einfache Befehle wie PING (soll bei nicht erreichbarem Arduino
+# zügig einen Fehler melden).
+ARDUINO_TIMEOUT = _env_float("SMARTMED_ARDUINO_TIMEOUT", 2.0)
+# DISPENSE lässt den Arduino den Motor drehen, bevor er antwortet - das
+# dauert je nach Kalibrierung/Stückzahl mehrere Sekunden. Die Python-Seite
+# kennt die genaue Arduino-Kalibrierung bewusst nicht (siehe .ino), wartet
+# hier pro Einheit aber grosszügig lang, damit ein normales Timeout nicht
+# faelschlich als "Antwort kam nicht" gewertet wird, während der Arduino in
+# Wirklichkeit nur noch am Drehen ist.
+ARDUINO_DISPENSE_TIMEOUT_PER_UNIT = _env_float("SMARTMED_ARDUINO_DISPENSE_TIMEOUT_PER_UNIT", 8.0)
 
 # "real" (Standard, Pi mit angeschlossenem Arduino) oder "mock"
 # (lokale Entwicklung/Tests am Laptop ohne Hardware).

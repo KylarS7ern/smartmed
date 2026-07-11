@@ -12,7 +12,7 @@ class QueuedTransport:
         self.responses = list(responses or [])
         self.commands = []
 
-    def transact(self, command: str):
+    def transact(self, command: str, *, timeout=None):
         self.commands.append(command)
         return self.responses.pop(0)
 

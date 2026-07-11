@@ -1,3 +1,4 @@
+from smartmed.config import ARDUINO_DISPENSE_TIMEOUT_PER_UNIT
 from smartmed.hardware.protocol import build_dispense_command, build_ping_command
 from smartmed.hardware.serial_transport import ArduinoSerialError
 from smartmed.hardware.slot_config import get_slot_label
@@ -51,7 +52,11 @@ def ping_arduino(transport) -> dict:
 def dispense_slot(transport, *, slot: int, count: int = 1) -> dict:
     try:
         command = build_dispense_command(slot, count)
-        response = transport.transact(command)
+        # DISPENSE lässt den Arduino erst den Motor drehen, bevor er
+        # antwortet - das dauert je nach Stückzahl mehrere Sekunden, also
+        # deutlich länger als das normale (kurze) PING-Timeout.
+        timeout = max(count, 1) * ARDUINO_DISPENSE_TIMEOUT_PER_UNIT
+        response = transport.transact(command, timeout=timeout)
     except ValueError as exc:
         return {
             "ok": False,

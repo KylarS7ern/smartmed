@@ -66,7 +66,7 @@ class ArduinoSerialTransport:
             finally:
                 self._serial = None
 
-    def transact(self, command: str) -> dict:
+    def transact(self, command: str, *, timeout: float | None = None) -> dict:
         if not command.endswith("\n"):
             raise ValueError("Der Befehl muss mit einem Zeilenumbruch enden.")
 
@@ -74,7 +74,18 @@ class ArduinoSerialTransport:
 
         assert self._serial is not None
 
+        original_timeout = self._serial.timeout
         try:
+            if timeout is not None:
+                self._serial.timeout = timeout
+
+            # Verwirft Bytes, die noch von einer vorherigen, zu spät
+            # eingetroffenen Antwort im Puffer liegen (z.B. weil ein früherer
+            # Befehl knapp getimeoutet ist) - sonst würde diese Antwort hier
+            # fälschlich als Antwort auf den JETZT gesendeten Befehl gelesen
+            # und der Versatz würde sich von da an dauerhaft fortsetzen.
+            self._serial.reset_input_buffer()
+
             self._serial.write(command.encode("utf-8"))
             self._serial.flush()
             raw = self._serial.readline().decode("utf-8", errors="replace")
@@ -82,7 +93,10 @@ class ArduinoSerialTransport:
             raise ArduinoSerialError(
                 f"Serielle Kommunikation fehlgeschlagen: {exc!r}"
             ) from exc
-        
+        finally:
+            if timeout is not None:
+                self._serial.timeout = original_timeout
+
         response = parse_response(raw)
 
         if response["kind"] == "empty":

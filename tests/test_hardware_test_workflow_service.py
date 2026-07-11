@@ -10,7 +10,7 @@ class FakeTransport:
         self.error = error
         self.commands = []
 
-    def transact(self, command: str):
+    def transact(self, command: str, *, timeout=None):
         self.commands.append(command)
 
         if self.error is not None:
