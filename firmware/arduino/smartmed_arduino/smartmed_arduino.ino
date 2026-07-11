@@ -1,10 +1,20 @@
 const int SLOT_COUNT = 3;
 
-const int STEP_PINS[SLOT_COUNT] = {2, -1, -1};
-const int DIR_PINS[SLOT_COUNT]  = {3, -1, -1};
-const int EN_PINS[SLOT_COUNT]   = {4, -1, -1};
+// Pin-Belegung: Fach 1 ist die an echter Hardware getestete Verdrahtung
+// (Motor 1). Fach 2/3 sind danach analog weiterverdrahtet - falls die
+// tatsächliche Verkabelung von Fach 2/3 davon abweicht, hier anpassen.
+const int STEP_PINS[SLOT_COUNT] = {3, 9, 12};
+const int DIR_PINS[SLOT_COUNT]  = {2, 8, 11};
+const int EN_PINS[SLOT_COUNT]   = {4, 10, 13};
 
-const bool SLOT_ENABLED[SLOT_COUNT] = {true, false, false};
+const bool SLOT_ENABLED[SLOT_COUNT] = {true, true, true};
+
+// DRV8825-Mikroschritt-Auswahlpins (M0/M1/M2). Alle drei Treiber sind auf
+// dieselbe Mikroschrittauflösung eingestellt und teilen sich daher dieselben
+// drei Pins, statt separate M0/M1/M2 pro Motor zu belegen.
+const int M0_PIN = 7;
+const int M1_PIN = 6;
+const int M2_PIN = 5;
 
 // Diese Zahl bestimmt, wie weit der Motor pro "1 Ausgabe"-Einheit dreht.
 // Kalibrierung pro Fach hier eintragen.
@@ -17,10 +27,16 @@ const bool SLOT_ENABLED[SLOT_COUNT] = {true, false, false};
 // Fach angepasst/neu kalibriert, wirkt sich das automatisch korrekt auf
 // jede künftige Ausgabe dieses Fachs aus, ohne dass am Python-Code etwas
 // geändert werden muss.
-const int STEPS_PER_DISPENSE_UNIT[SLOT_COUNT] = {200, 200, 200};
+//
+// 1600 = an Motor 1 getesteter Wert für 90° bei 1/32-Mikroschritt.
+const int STEPS_PER_DISPENSE_UNIT[SLOT_COUNT] = {1600, 1600, 1600};
 
-const unsigned int STEP_PULSE_HIGH_US = 800;
-const unsigned int STEP_PULSE_LOW_US = 800;
+const unsigned int STEP_PULSE_HIGH_US = 1000;
+const unsigned int STEP_PULSE_LOW_US = 1000;
+
+// Kurze Pause zwischen Treiber-Aktivierung und erstem Schritt-Impuls, damit
+// der DRV8825 sicher aufgewacht ist (an Motor 1 mit 5ms getestet).
+const unsigned int DRIVER_WAKEUP_MS = 5;
 
 String inputLine;
 
@@ -32,6 +48,15 @@ void rotateOneDispenseUnit(int slotIndex);
 
 void setup() {
   Serial.begin(115200);
+
+  pinMode(M0_PIN, OUTPUT);
+  pinMode(M1_PIN, OUTPUT);
+  pinMode(M2_PIN, OUTPUT);
+
+  // 1/32 Mikroschritt beim DRV8825: M0 = HIGH, M1 = LOW, M2 = HIGH
+  digitalWrite(M0_PIN, HIGH);
+  digitalWrite(M1_PIN, LOW);
+  digitalWrite(M2_PIN, HIGH);
 
   for (int i = 0; i < SLOT_COUNT; i++) {
     if (!SLOT_ENABLED[i]) {
@@ -129,6 +154,7 @@ void handleDispenseCommand(const String& line) {
 
 bool performDispense(int slotIndex, int count) {
   enableDriver(slotIndex, true);
+  delay(DRIVER_WAKEUP_MS);
 
   for (int i = 0; i < count; i++) {
     rotateOneDispenseUnit(slotIndex);
@@ -143,7 +169,7 @@ void enableDriver(int slotIndex, bool enabled) {
 }
 
 void rotateOneDispenseUnit(int slotIndex) {
-  digitalWrite(DIR_PINS[slotIndex], LOW);
+  digitalWrite(DIR_PINS[slotIndex], HIGH);
 
   int steps = STEPS_PER_DISPENSE_UNIT[slotIndex];
 
