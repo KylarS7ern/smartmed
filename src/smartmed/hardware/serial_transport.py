@@ -66,10 +66,34 @@ class ArduinoSerialTransport:
             finally:
                 self._serial = None
 
-    def transact(self, command: str, *, timeout: float | None = None) -> dict:
+    def transact(self, command: str, *, timeout: float | None = None, retries: int = 2) -> dict:
         if not command.endswith("\n"):
             raise ValueError("Der Befehl muss mit einem Zeilenumbruch enden.")
 
+        last_error: ArduinoSerialError | None = None
+
+        for versuch in range(retries + 1):
+            if versuch > 0:
+                # Verbindung war zuletzt kaputt (z.B. Kabel kurz raus/rein,
+                # USB-Reset) - kurz warten, bis das Gerät sich neu
+                # enumeriert hat, bevor der nächste Versuch startet.
+                time.sleep(0.5)
+
+            try:
+                return self._transact_once(command, timeout=timeout)
+            except ArduinoSerialError as exc:
+                last_error = exc
+                # self._serial bleibt sonst dauerhaft in einem kaputten
+                # Zustand hängen (is_open prüft nur, ob das Objekt noch
+                # existiert, nicht ob die Verbindung wirklich funktioniert).
+                # Schliessen erzwingt beim nächsten Versuch ein frisches
+                # open().
+                self.close()
+
+        assert last_error is not None
+        raise last_error
+
+    def _transact_once(self, command: str, *, timeout: float | None) -> dict:
         self.open()
 
         assert self._serial is not None

@@ -22,7 +22,7 @@ class MockArduinoTransport:
     def close(self) -> None:
         self._open = False
 
-    def transact(self, command: str, *, timeout: float | None = None) -> dict:
+    def transact(self, command: str, *, timeout: float | None = None, retries: int = 2) -> dict:
         if not command.endswith("\n"):
             raise ValueError("Der Befehl muss mit einem Zeilenumbruch enden.")
 
