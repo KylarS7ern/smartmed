@@ -67,6 +67,69 @@ def delete_user_result(*, users, username, current_user):
     }
 
 
+def build_password_change_result(
+    *,
+    current_password_stored,
+    current_password_input,
+    new_password_text,
+    new_password_confirm_text,
+):
+    """Validiert eine Passwortänderung und bereitet das (gehashte) Update vor.
+
+    Leeres neues Passwort entfernt den Passwortschutz (analog zum
+    Admin-PIN und zur optionalen Passwortvergabe bei neuen Benutzern).
+    """
+    gespeichertes_pw = (current_password_stored or '').strip()
+
+    if gespeichertes_pw and not verify_secret(gespeichertes_pw, (current_password_input or '').strip()):
+        return {
+            'ok': False,
+            'password': None,
+            'message': 'Aktuelles Passwort ist falsch.',
+        }
+
+    neu = (new_password_text or '').strip()
+    bestaetigung = (new_password_confirm_text or '').strip()
+
+    if neu != bestaetigung:
+        return {
+            'ok': False,
+            'password': None,
+            'message': 'Die neuen Passwörter stimmen nicht überein.',
+        }
+
+    if not neu:
+        return {
+            'ok': True,
+            'password': '',
+            'message': 'Passwortschutz wurde entfernt.',
+        }
+
+    return {
+        'ok': True,
+        'password': hash_secret(neu),
+        'message': 'Passwort wurde geändert.',
+    }
+
+
+def build_password_reset_result(*, users, username):
+    """Setzt das Passwort eines Benutzers zurück (Admin-Funktion bei vergessenem Passwort).
+
+    Setzt hier noch nichts selbst - der Aufrufer wendet das Ergebnis an.
+    """
+    if username not in users:
+        return {
+            'ok': False,
+            'message': f'Benutzer "{username}" existiert nicht.',
+        }
+
+    return {
+        'ok': True,
+        'username': username,
+        'message': f'Passwort für "{username}" wurde entfernt. Anmeldung ist jetzt ohne Passwort möglich.',
+    }
+
+
 def create_user_result(*, users, username_text, password_text, settings):
     """Validiert die Eingaben und bereitet einen neuen Benutzer vor."""
     username = (username_text or '').strip()

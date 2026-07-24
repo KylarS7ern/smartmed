@@ -8,6 +8,7 @@ from smartmed.ui import theme
 from smartmed.ui.navigation import go_to_settings_menu
 from smartmed.ui.widgets import (
     BodyLabel,
+    MutedLabel,
     SecondaryButton,
     StyledTextInput,
     SuccessButton,
@@ -19,6 +20,7 @@ from smartmed.services.patient_profile_service import (
     build_patient_form_data,
     build_patient_profile_update,
 )
+from smartmed.services.user_account_service import build_password_change_result
 
 
 class PatientSettingsScreen(Screen):
@@ -75,6 +77,43 @@ class PatientSettingsScreen(Screen):
         form.add_widget(field_row('Kontakt 2 E-Mail:', self.c2_email_input))
         form.add_widget(field_row('Kontakt 2 Telefon:', self.c2_phone_input))
 
+        pw_titel = BodyLabel(
+            text='Eigenes Login-Passwort ändern:',
+            font_size=theme.FONT_BODY,
+            size_hint=(1, None),
+            height=dp(36)
+        )
+        self.pw_current_input = StyledTextInput(
+            multiline=False, password=True, font_size=theme.FONT_BODY
+        )
+        self.pw_new_input = StyledTextInput(
+            multiline=False, password=True, font_size=theme.FONT_BODY
+        )
+        self.pw_confirm_input = StyledTextInput(
+            multiline=False, password=True, font_size=theme.FONT_BODY
+        )
+        self.pw_status_label = MutedLabel(
+            text='',
+            halign='center',
+            valign='middle',
+            size_hint=(1, None),
+            height=dp(36)
+        )
+        btn_pw_speichern = SuccessButton(
+            text='Passwort ändern',
+            font_size=theme.FONT_BODY,
+            size_hint=(1, None),
+            height=theme.BUTTON_HEIGHT
+        )
+        btn_pw_speichern.bind(on_press=self.passwort_aendern)
+
+        form.add_widget(pw_titel)
+        form.add_widget(field_row('Aktuelles Passwort:', self.pw_current_input))
+        form.add_widget(field_row('Neues Passwort:', self.pw_new_input))
+        form.add_widget(field_row('Wiederholen:', self.pw_confirm_input))
+        form.add_widget(self.pw_status_label)
+        form.add_widget(btn_pw_speichern)
+
         scroll.add_widget(form)
 
         btn_speichern = SuccessButton(
@@ -117,6 +156,34 @@ class PatientSettingsScreen(Screen):
         self.c2_name_input.text = form_data['contact2_name']
         self.c2_email_input.text = form_data['contact2_email']
         self.c2_phone_input.text = form_data['contact2_phone']
+
+        self.pw_current_input.text = ''
+        self.pw_new_input.text = ''
+        self.pw_confirm_input.text = ''
+        self.pw_status_label.text = ''
+
+    def passwort_aendern(self, instance):
+        app = App.get_running_app()
+        user = app.users.get(app.current_user, {})
+
+        result = build_password_change_result(
+            current_password_stored=user.get('password', ''),
+            current_password_input=self.pw_current_input.text,
+            new_password_text=self.pw_new_input.text,
+            new_password_confirm_text=self.pw_confirm_input.text,
+        )
+
+        self.pw_status_label.text = result['message']
+
+        if not result['ok']:
+            return
+
+        user['password'] = result['password']
+        app.save_data()
+
+        self.pw_current_input.text = ''
+        self.pw_new_input.text = ''
+        self.pw_confirm_input.text = ''
 
     def speichern_patient(self, instance):
         app = App.get_running_app()

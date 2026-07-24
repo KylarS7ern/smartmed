@@ -1,12 +1,14 @@
 import unittest
 
 from smartmed.services.user_account_service import (
+    build_password_change_result,
+    build_password_reset_result,
     create_user_result,
     delete_user_result,
     user_requires_password,
     verify_user_password,
 )
-from smartmed.services.security_service import is_hashed
+from smartmed.services.security_service import hash_secret, is_hashed
 
 
 class UserAccountServiceTests(unittest.TestCase):
@@ -101,6 +103,74 @@ class UserAccountServiceTests(unittest.TestCase):
         users = {"Anna": {}, "Bert": {}}
 
         result = delete_user_result(users=users, username="Carla", current_user="Anna")
+
+        self.assertFalse(result["ok"])
+
+    def test_password_change_requires_correct_current_password(self):
+        result = build_password_change_result(
+            current_password_stored=hash_secret("alt"),
+            current_password_input="falsch",
+            new_password_text="neu123",
+            new_password_confirm_text="neu123",
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertIn("Aktuelles Passwort", result["message"])
+
+    def test_password_change_rejects_mismatched_new_passwords(self):
+        result = build_password_change_result(
+            current_password_stored="",
+            current_password_input="",
+            new_password_text="neu123",
+            new_password_confirm_text="anders",
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertIn("stimmen nicht überein", result["message"])
+
+    def test_password_change_succeeds_and_hashes_new_password(self):
+        result = build_password_change_result(
+            current_password_stored=hash_secret("alt"),
+            current_password_input="alt",
+            new_password_text="neu123",
+            new_password_confirm_text="neu123",
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(is_hashed(result["password"]))
+
+    def test_password_change_with_empty_new_password_removes_protection(self):
+        result = build_password_change_result(
+            current_password_stored=hash_secret("alt"),
+            current_password_input="alt",
+            new_password_text="",
+            new_password_confirm_text="",
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["password"], "")
+
+    def test_password_change_skips_current_password_check_when_none_set(self):
+        result = build_password_change_result(
+            current_password_stored="",
+            current_password_input="irrelevant",
+            new_password_text="neu123",
+            new_password_confirm_text="neu123",
+        )
+
+        self.assertTrue(result["ok"])
+
+    def test_password_reset_result_succeeds_for_existing_user(self):
+        users = {"Anna": {"password": hash_secret("geheim")}}
+
+        result = build_password_reset_result(users=users, username="Anna")
+
+        self.assertTrue(result["ok"])
+
+    def test_password_reset_result_rejects_unknown_username(self):
+        users = {"Anna": {}}
+
+        result = build_password_reset_result(users=users, username="Carla")
 
         self.assertFalse(result["ok"])
 

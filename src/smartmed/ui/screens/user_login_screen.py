@@ -19,6 +19,7 @@ from smartmed.ui.widgets import (
 
 from smartmed.services.admin_pin_service import has_admin_pin, verify_admin_pin
 from smartmed.services.user_account_service import (
+    build_password_reset_result,
     create_user_result,
     delete_user_result,
     list_sorted_usernames,
@@ -123,17 +124,17 @@ class UserLoginScreen(Screen):
             )
             btn.bind(on_press=lambda inst, name=username: self.login_benutzer(name))
 
-            btn_loeschen = DangerButton(
-                text='Löschen',
+            btn_verwalten = SecondaryButton(
+                text='Verwalten',
                 font_size=theme.FONT_SMALL,
                 size_hint=(0.25, 1)
             )
-            btn_loeschen.bind(
-                on_press=lambda inst, name=username: self.benutzer_loeschen_anfragen(name)
+            btn_verwalten.bind(
+                on_press=lambda inst, name=username: self.benutzer_verwalten(name)
             )
 
             reihe.add_widget(btn)
-            reihe.add_widget(btn_loeschen)
+            reihe.add_widget(btn_verwalten)
             self.user_list_layout.add_widget(reihe)
 
     def login_benutzer(self, username):
@@ -196,19 +197,64 @@ class UserLoginScreen(Screen):
 
         popup.open()
 
-    def benutzer_loeschen_anfragen(self, username):
-        """Fragt bei gesetztem Admin-PIN erst diesen ab, dann die Sicherheitsabfrage."""
+    def benutzer_verwalten(self, username):
+        """Zeigt die Verwaltungsoptionen für einen Benutzer (Passwort zurücksetzen / Löschen)."""
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
+
+        label = BodyLabel(
+            text=f'Benutzer "{username}" verwalten:',
+            halign='center',
+            valign='middle'
+        )
+
+        btn_layout = BoxLayout(orientation='vertical', spacing=theme.SPACING, size_hint=(1, 0.5))
+
+        btn_pw_reset = PrimaryButton(text='Passwort zurücksetzen')
+        btn_loeschen = DangerButton(text='Benutzer löschen')
+        btn_abbrechen = SecondaryButton(text='Abbrechen')
+
+        btn_layout.add_widget(btn_pw_reset)
+        btn_layout.add_widget(btn_loeschen)
+        btn_layout.add_widget(btn_abbrechen)
+
+        layout.add_widget(label)
+        layout.add_widget(btn_layout)
+
+        popup = make_popup(title='Verwalten', content=layout, size_hint=(0.85, 0.6))
+
+        def pw_reset(_inst):
+            popup.dismiss()
+            self._pruefe_admin_pin(
+                'Bitte Admin-PIN eingeben, um ein Passwort zurückzusetzen:',
+                lambda: self._zeige_pw_reset_bestaetigung(username),
+            )
+
+        def loeschen(_inst):
+            popup.dismiss()
+            self._pruefe_admin_pin(
+                'Bitte Admin-PIN eingeben, um einen Benutzer zu löschen:',
+                lambda: self._zeige_loesch_bestaetigung(username),
+            )
+
+        btn_pw_reset.bind(on_press=pw_reset)
+        btn_loeschen.bind(on_press=loeschen)
+        btn_abbrechen.bind(on_press=lambda *_: popup.dismiss())
+
+        popup.open()
+
+    def _pruefe_admin_pin(self, frage_text, on_verified):
+        """Fragt bei gesetztem Admin-PIN diesen ab und ruft danach on_verified() auf."""
         app = App.get_running_app()
         pin = getattr(app, 'admin_pin', '')
 
         if not has_admin_pin(pin):
-            self._zeige_loesch_bestaetigung(username)
+            on_verified()
             return
 
         layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
 
         label = BodyLabel(
-            text='Bitte Admin-PIN eingeben, um einen Benutzer zu löschen:',
+            text=frage_text,
             halign='center',
             valign='middle'
         )
@@ -243,7 +289,7 @@ class UserLoginScreen(Screen):
                     app.admin_pin = hash_secret(pin_input.text.strip())
                     app.save_data()
                 popup.dismiss()
-                self._zeige_loesch_bestaetigung(username)
+                on_verified()
             else:
                 label.text = result['message']
 
@@ -251,6 +297,52 @@ class UserLoginScreen(Screen):
         btn_cancel.bind(on_press=lambda *_: popup.dismiss())
 
         popup.open()
+
+    def _zeige_pw_reset_bestaetigung(self, username):
+        """Sicherheitsabfrage vor dem Zurücksetzen eines Passworts."""
+        layout = BoxLayout(orientation='vertical', padding=theme.PADDING, spacing=theme.SPACING)
+
+        label = BodyLabel(
+            text=f'Passwort für "{username}" wirklich zurücksetzen?\n\n'
+                 'Die Anmeldung ist danach ohne Passwort möglich, bis ein neues gesetzt wird.',
+            halign='center',
+            valign='middle'
+        )
+
+        btn_layout = BoxLayout(orientation='horizontal', spacing=theme.SPACING, size_hint=(1, 0.3))
+
+        btn_ja = DangerButton(text='Ja, zurücksetzen')
+        btn_nein = SecondaryButton(text='Nein')
+
+        btn_layout.add_widget(btn_ja)
+        btn_layout.add_widget(btn_nein)
+
+        layout.add_widget(label)
+        layout.add_widget(btn_layout)
+
+        popup = make_popup(title='Zurücksetzen bestätigen', content=layout, size_hint=(0.85, 0.5))
+
+        def ja(_instance):
+            popup.dismiss()
+            self._passwort_zuruecksetzen(username)
+
+        btn_ja.bind(on_press=ja)
+        btn_nein.bind(on_press=lambda *_: popup.dismiss())
+
+        popup.open()
+
+    def _passwort_zuruecksetzen(self, username):
+        app = App.get_running_app()
+
+        result = build_password_reset_result(users=app.users, username=username)
+
+        if not result['ok']:
+            self._zeige_fehler(result['message'])
+            return
+
+        app.users[username]['password'] = ''
+        app.log_event(result['message'])
+        app.save_data()
 
     def _zeige_loesch_bestaetigung(self, username):
         """Zweite, ausdrückliche Sicherheitsabfrage vor dem endgültigen Löschen."""
