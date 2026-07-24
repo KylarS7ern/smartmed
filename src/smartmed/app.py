@@ -1,5 +1,6 @@
 """Zentraler Einstiegspunkt: die Kivy-App-Klasse und ihre Erzeugung."""
 
+import json
 import time
 
 from kivy.app import App
@@ -15,6 +16,7 @@ from smartmed.services.alarm_workflow_service import (
     process_overdue_alarm_actions,
 )
 from smartmed.services.app_persistence_service import apply_loaded_data, build_data_to_save
+from smartmed.services.backup_service import export_data_to_file, list_backup_files, load_backup_file
 from smartmed.services.dispense_service import dispense_slot, ping_arduino
 from smartmed.services.event_log_service import (
     append_log_entry,
@@ -29,6 +31,7 @@ from smartmed.services.intake_workflow_service import (
 )
 from smartmed.services.notification_service import (
     send_alarm_notifications_for_settings,
+    send_backup_export_email,
     send_late_confirmation_notifications_for_settings,
     send_log_export_email,
 )
@@ -131,6 +134,47 @@ class SmartMedGUI(App):
             log_callback=self.log_event,
         )
         return result
+
+    def exportiere_backup(self):
+        """Exportiert die komplette Datenbank (alle Benutzer, Pläne, Logs) als Sicherungsdatei."""
+        try:
+            pfad = export_data_to_file(build_data_to_save(self), EXPORT_DIR)
+        except OSError as exc:
+            return {'ok': False, 'message': f'Sicherung fehlgeschlagen: {exc}'}
+
+        self.log_event(f"Datensicherung exportiert nach: {pfad}")
+        return {'ok': True, 'message': f'Sicherung exportiert nach:\n{pfad}'}
+
+    def sende_backup_per_email(self):
+        """Versendet die komplette Datensicherung per E-Mail."""
+        to_addr = (self.settings.get('email_to') or '').strip()
+        text = json.dumps(build_data_to_save(self), ensure_ascii=False, indent=2)
+
+        result = send_backup_export_email(
+            backup_text=text,
+            to_addr=to_addr,
+            log_callback=self.log_event,
+        )
+        return result
+
+    def liste_backups(self):
+        """Gibt die vorhandenen Sicherungsdateien zurück, neueste zuerst."""
+        return list_backup_files(EXPORT_DIR)
+
+    def stelle_backup_wieder_her(self, pfad):
+        """Ersetzt die komplette aktuelle Datenbank durch eine Sicherungsdatei."""
+        try:
+            data = load_backup_file(pfad)
+        except (OSError, ValueError) as exc:
+            return {'ok': False, 'message': f'Wiederherstellung fehlgeschlagen: {exc}'}
+
+        apply_loaded_data(self, data)
+        load_user_into_app(self, self.current_user)
+        reset_runtime_state(self)
+        self.save_data()
+
+        self.log_event(f"Datensicherung wiederhergestellt aus: {pfad}")
+        return {'ok': True, 'message': f'Wiederhergestellt aus:\n{pfad}'}
 
     def ping_arduino_hardware(self):
         return ping_arduino(self.arduino_transport)

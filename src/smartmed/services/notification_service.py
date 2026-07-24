@@ -182,6 +182,28 @@ def send_log_export_email(*, log_text: str, to_addr: str, log_callback=None) -> 
     )
 
 
+def send_backup_export_email(*, backup_text: str, to_addr: str, log_callback=None) -> dict:
+    """Versendet eine vollständige Datensicherung per E-Mail (als Anhang) über
+    denselben Account, der auch Alarm-Benachrichtigungen verschickt."""
+    return send_email_with_attachment(
+        smtp_server=EMAIL_SMTP_SERVER,
+        smtp_port=EMAIL_SMTP_PORT,
+        username=EMAIL_USERNAME,
+        password=EMAIL_PASSWORT,
+        to_addr=to_addr,
+        subject="SmartMedSpender-Datensicherung",
+        body=(
+            "Im Anhang befindet sich eine vollständige Datensicherung "
+            "(alle Benutzer, Einnahmepläne, Logs). Diese Datei kann über "
+            "'Sicherung wiederherstellen' in den erweiterten Einstellungen "
+            "wieder eingespielt werden."
+        ),
+        attachment_text=backup_text,
+        attachment_filename="smartmed_backup.json",
+        log_callback=log_callback,
+    )
+
+
 def _send_text_notifications(
     *,
     text: str,
