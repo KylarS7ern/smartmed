@@ -232,6 +232,45 @@ def markiere_ueberfaellige_offene_einnahmen(ueberfaellige):
     return verarbeitete
 
 
+def serialize_offene_einnahmen(offene_einnahmen):
+    """Wandelt offene Einnahmen in eine JSON-taugliche Form um.
+
+    key ist als Tupel nicht JSON-serialisierbar (wird zu einer Liste),
+    faellige_zeit/deadline sind datetime-Objekte (werden zu ISO-Text).
+    Nötig, damit offene Einnahmen einen App-Neustart überstehen, statt
+    stillschweigend verloren zu gehen (siehe deserialize_offene_einnahmen).
+    """
+    ergebnis = []
+    for off in offene_einnahmen:
+        kopie = dict(off)
+        if isinstance(kopie.get('key'), tuple):
+            kopie['key'] = list(kopie['key'])
+        for feld in ('faellige_zeit', 'deadline'):
+            wert = kopie.get(feld)
+            if isinstance(wert, datetime):
+                kopie[feld] = wert.isoformat()
+        ergebnis.append(kopie)
+    return ergebnis
+
+
+def deserialize_offene_einnahmen(data):
+    """Kehrt serialize_offene_einnahmen() beim Laden aus der JSON-Datei um."""
+    ergebnis = []
+    for off in data or []:
+        kopie = dict(off)
+        if isinstance(kopie.get('key'), list):
+            kopie['key'] = tuple(kopie['key'])
+        for feld in ('faellige_zeit', 'deadline'):
+            wert = kopie.get(feld)
+            if isinstance(wert, str):
+                try:
+                    kopie[feld] = datetime.fromisoformat(wert)
+                except ValueError:
+                    kopie[feld] = None
+        ergebnis.append(kopie)
+    return ergebnis
+
+
 def bestaetige_offene_einnahmen(due, offene_einnahmen, zeitpunkt):
     """Markiert passende offene Einnahmen als bestätigt.
 

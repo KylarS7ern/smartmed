@@ -1,3 +1,9 @@
+from smartmed.services.schedule_service import (
+    deserialize_offene_einnahmen,
+    serialize_offene_einnahmen,
+)
+
+
 def load_user_into_app(app, username):
     """Lädt die Daten eines Benutzers in die App-Attribute."""
     user = app.users.get(username, {})
@@ -20,6 +26,7 @@ def load_user_into_app(app, username):
 
     app.plan_eintraege = user.get('plan_eintraege', [])
     app.log_eintraege = user.get('log_eintraege', [])
+    app.offene_einnahmen = deserialize_offene_einnahmen(user.get('offene_einnahmen', []))
 
 
 def store_current_user_state(app):
@@ -48,3 +55,4 @@ def store_current_user_state(app):
     user['settings'] = app.settings.copy()
     user['plan_eintraege'] = app.plan_eintraege
     user['log_eintraege'] = app.log_eintraege
+    user['offene_einnahmen'] = serialize_offene_einnahmen(app.offene_einnahmen)

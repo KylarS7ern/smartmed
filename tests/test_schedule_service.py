@@ -6,9 +6,11 @@ from smartmed.services.schedule_service import (
     berechne_alarm_delay_minuten,
     berechne_naechste_einnahme,
     bestaetige_offene_einnahmen,
+    deserialize_offene_einnahmen,
     erstelle_offene_einnahmen,
     finde_faellige_einnahmen,
     ist_eintrag_faellig_am,
+    serialize_offene_einnahmen,
 )
 
 
@@ -220,6 +222,60 @@ class ScheduleServiceTests(unittest.TestCase):
 
         self.assertEqual(len(tag2), 1)
         self.assertNotEqual(tag1[0]["key"], tag2[0]["key"])
+
+    def test_serialize_offene_einnahmen_converts_tuple_key_and_datetimes(self):
+        offene = [{
+            "key": ("Mo", "08:00", "1", "A", "2026-04-20"),
+            "eintrag": {"medikament": "A"},
+            "faellige_zeit": datetime(2026, 4, 20, 8, 0, 0),
+            "deadline": datetime(2026, 4, 20, 8, 30, 0),
+            "bestaetigt": False,
+            "alarm_verschickt": False,
+        }]
+
+        serialisiert = serialize_offene_einnahmen(offene)
+
+        self.assertIsInstance(serialisiert[0]["key"], list)
+        self.assertEqual(serialisiert[0]["key"], ["Mo", "08:00", "1", "A", "2026-04-20"])
+        self.assertIsInstance(serialisiert[0]["faellige_zeit"], str)
+        self.assertIsInstance(serialisiert[0]["deadline"], str)
+
+    def test_deserialize_offene_einnahmen_restores_tuple_key_and_datetimes(self):
+        gespeichert = [{
+            "key": ["Mo", "08:00", "1", "A", "2026-04-20"],
+            "eintrag": {"medikament": "A"},
+            "faellige_zeit": "2026-04-20T08:00:00",
+            "deadline": "2026-04-20T08:30:00",
+            "bestaetigt": False,
+            "alarm_verschickt": False,
+        }]
+
+        wiederhergestellt = deserialize_offene_einnahmen(gespeichert)
+
+        self.assertEqual(wiederhergestellt[0]["key"], ("Mo", "08:00", "1", "A", "2026-04-20"))
+        self.assertEqual(wiederhergestellt[0]["faellige_zeit"], datetime(2026, 4, 20, 8, 0, 0))
+        self.assertEqual(wiederhergestellt[0]["deadline"], datetime(2026, 4, 20, 8, 30, 0))
+
+    def test_serialize_then_deserialize_round_trip_preserves_key_equality(self):
+        """Wichtig für die Dedup-/Bestätigungslogik: der Key muss nach einem
+        Speichern+Laden-Zyklus weiterhin per Tupel-Gleichheit vergleichbar sein."""
+        original_key = ("Mo", "08:00", "1", "A", "2026-04-20")
+        offene = [{
+            "key": original_key,
+            "eintrag": {},
+            "faellige_zeit": datetime(2026, 4, 20, 8, 0, 0),
+            "deadline": datetime(2026, 4, 20, 8, 30, 0),
+            "bestaetigt": False,
+            "alarm_verschickt": False,
+        }]
+
+        rundgereist = deserialize_offene_einnahmen(serialize_offene_einnahmen(offene))
+
+        self.assertEqual(rundgereist[0]["key"], original_key)
+
+    def test_deserialize_offene_einnahmen_handles_missing_or_empty_data(self):
+        self.assertEqual(deserialize_offene_einnahmen([]), [])
+        self.assertEqual(deserialize_offene_einnahmen(None), [])
 
 
 if __name__ == "__main__":

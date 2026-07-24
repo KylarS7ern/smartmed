@@ -10,13 +10,21 @@ class DummyApp:
 
 
 class RuntimeStateServiceTests(unittest.TestCase):
-    def test_reset_runtime_state_resets_transient_fields(self):
+    def test_reset_runtime_state_resets_last_popup_minute(self):
         app = DummyApp()
 
         reset_runtime_state(app)
 
-        self.assertEqual(app.offene_einnahmen, [])
         self.assertIsNone(app._last_popup_minute)
+
+    def test_reset_runtime_state_does_not_touch_offene_einnahmen(self):
+        """offene_einnahmen wird pro Benutzer persistiert und darf beim
+        Reset des Laufzeitzustands nicht mehr verworfen werden."""
+        app = DummyApp()
+
+        reset_runtime_state(app)
+
+        self.assertEqual(app.offene_einnahmen, [{"irgendwas": 1}])
 
 
 if __name__ == "__main__":

@@ -33,6 +33,7 @@ def build_default_user(
         "settings": dict(settings) if settings is not None else build_default_settings(),
         "plan_eintraege": [],
         "log_eintraege": [],
+        "offene_einnahmen": [],
     }
 
 def build_default_app_state() -> dict:
