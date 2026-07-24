@@ -9,7 +9,15 @@ from smartmed.config import (
 )
 
 import smtplib
+import time
 import requests
+
+# Alarm-Benachrichtigungen sind sicherheitsrelevant (verpasste Einnahme) und
+# laufen unbeaufsichtigt - ein einzelner Netzwerk-Hänger soll die
+# Benachrichtigung nicht stillschweigend ausfallen lassen. Deshalb hier ein
+# automatischer, kurzer Retry statt nur eines manuellen "Erneut senden".
+_ALARM_SEND_VERSUCHE = 2
+_ALARM_RETRY_VERZOEGERUNG_S = 3.0
 
 
 def build_alarm_text(eintrag: dict) -> str:
@@ -50,21 +58,27 @@ def send_telegram_alarm(
         print("Telegram nicht konfiguriert (Token oder Chat-ID fehlt).")
         return
 
-    try:
-        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-        resp = requests.post(url, data={"chat_id": chat_id, "text": text})
-        if resp.status_code == 200:
-            print("Telegram-Alarm gesendet.")
-            if log_callback:
-                log_callback("Telegram-Alarm gesendet.")
-        else:
-            print("Fehler beim Telegram-Request:", resp.text)
-            if log_callback:
-                log_callback(f"Fehler beim Telegram-Request: {resp.text}")
-    except Exception as e:
-        print("Fehler beim Senden von Telegram:", e)
-        if log_callback:
-            log_callback(f"Fehler beim Senden von Telegram: {e}")
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    letzter_fehler = None
+
+    for versuch in range(1, _ALARM_SEND_VERSUCHE + 1):
+        try:
+            resp = requests.post(url, data={"chat_id": chat_id, "text": text})
+            if resp.status_code == 200:
+                print("Telegram-Alarm gesendet.")
+                if log_callback:
+                    log_callback("Telegram-Alarm gesendet.")
+                return
+            letzter_fehler = f"Fehler beim Telegram-Request: {resp.text}"
+        except Exception as e:
+            letzter_fehler = f"Fehler beim Senden von Telegram: {e}"
+
+        if versuch < _ALARM_SEND_VERSUCHE:
+            time.sleep(_ALARM_RETRY_VERZOEGERUNG_S)
+
+    print(letzter_fehler)
+    if log_callback:
+        log_callback(f"{letzter_fehler} (auch nach Wiederholungsversuch fehlgeschlagen)")
 
 
 def send_email_alarm(
@@ -92,18 +106,30 @@ def send_email_alarm(
     msg["Subject"] = subject
     msg.set_content(body)
 
-    try:
-        with smtplib.SMTP(smtp_server, smtp_port) as smtp:
-            smtp.starttls()
-            smtp.login(username, password)
-            smtp.send_message(msg)
-        print("Alarm-E-Mail gesendet.")
-        if log_callback:
-            log_callback(f"E-Mail-Alarm an {to_addr} gesendet.")
-    except Exception as e:
-        print("Fehler beim Senden der E-Mail:", e)
-        if log_callback:
-            log_callback(f"Fehler beim Senden der E-Mail: {e}")
+    letzter_fehler = None
+
+    for versuch in range(1, _ALARM_SEND_VERSUCHE + 1):
+        try:
+            with smtplib.SMTP(smtp_server, smtp_port) as smtp:
+                smtp.starttls()
+                smtp.login(username, password)
+                smtp.send_message(msg)
+            print("Alarm-E-Mail gesendet.")
+            if log_callback:
+                log_callback(f"E-Mail-Alarm an {to_addr} gesendet.")
+            return
+        except Exception as e:
+            letzter_fehler = str(e)
+
+        if versuch < _ALARM_SEND_VERSUCHE:
+            time.sleep(_ALARM_RETRY_VERZOEGERUNG_S)
+
+    print("Fehler beim Senden der E-Mail:", letzter_fehler)
+    if log_callback:
+        log_callback(
+            f"Fehler beim Senden der E-Mail: {letzter_fehler} "
+            "(auch nach Wiederholungsversuch fehlgeschlagen)"
+        )
 
 
 def send_email_with_attachment(
