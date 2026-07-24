@@ -120,6 +120,33 @@ Die aktive Datendatei ist:
 
 Diese Datei wird von der App beim Start geladen und beim Speichern aktualisiert.
 
+## Admin-PIN zurücksetzen (falls vergessen)
+
+Der Admin-PIN schützt die drei Einstellungsbereiche (Patient/Alarm/Erweitert)
+sowie das Löschen/Zurücksetzen von Benutzern. Es gibt bewusst **keinen**
+Reset-Weg direkt in der App-Oberfläche - ein "PIN vergessen"-Knopf in der App
+selbst würde den Schutz aushebeln, den der PIN eigentlich bieten soll. Ein
+Reset ist nur mit direktem Zugriff auf den Pi (SSH oder Tastatur/Bildschirm
+am Gerät) möglich, was als Sicherheitsgrenze so beabsichtigt ist.
+
+Vorgehen:
+
+1. App beenden (bzw. `sudo systemctl stop` falls als Dienst eingerichtet,
+   ansonsten im Login-Screen "App beenden" oder das Fenster schliessen).
+2. Datei öffnen:
+
+       nano ~/<dein-projektordner>/data/smartmed_plan.json
+
+3. Die Zeile `"admin_pin": "..."` suchen und den Wert auf einen leeren
+   String setzen:
+
+       "admin_pin": "",
+
+   Speichern (`Strg+O`, Enter, `Strg+X`).
+4. App neu starten. Die Einstellungsbereiche sind jetzt ohne PIN
+   erreichbar - dort kann in "Erweiterte Einstellungen" sofort wieder ein
+   neuer PIN gesetzt werden.
+
 ## Entwicklungsansatz
 
 Entwickelt wird aktuell direkt auf dem Raspberry Pi mit Visual Studio Code per Remote-SSH.
