@@ -5,6 +5,7 @@ from smartmed.services.plan_service import (
     delete_plan_entry,
     format_plan_entry_summary,
     plan_entry_sort_key,
+    update_plan_entry,
 )
 
 
@@ -151,6 +152,64 @@ class PlanServiceTests(unittest.TestCase):
         eintraege.sort(key=plan_entry_sort_key)
 
         self.assertEqual(eintraege, [frueher, spaeter])
+
+    def test_create_plan_entry_rejects_anzahl_above_maximum(self):
+        result = create_plan_entry(
+            plan_eintraege=[],
+            fach_medikamente={},
+            medikament="Aspirin",
+            fach="1",
+            tag="Mo",
+            zeit="08:00",
+            anzahl=999,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertIn("zwischen", result["message"])
+
+    def test_create_plan_entry_rejects_anzahl_below_minimum(self):
+        result = create_plan_entry(
+            plan_eintraege=[],
+            fach_medikamente={},
+            medikament="Aspirin",
+            fach="1",
+            tag="Mo",
+            zeit="08:00",
+            anzahl=0,
+        )
+
+        self.assertFalse(result["ok"])
+
+    def test_create_plan_entry_accepts_anzahl_at_the_boundaries(self):
+        for grenzwert in (1, 5):
+            with self.subTest(anzahl=grenzwert):
+                result = create_plan_entry(
+                    plan_eintraege=[],
+                    fach_medikamente={},
+                    medikament="Aspirin",
+                    fach="1",
+                    tag="Mo",
+                    zeit="08:00",
+                    anzahl=grenzwert,
+                )
+                self.assertTrue(result["ok"])
+
+    def test_update_plan_entry_rejects_anzahl_above_maximum(self):
+        eintrag = {"medikament": "Aspirin", "fach": "1", "zeit": "08:00", "anzahl": 1}
+
+        result = update_plan_entry(
+            plan_eintraege=[eintrag],
+            fach_medikamente={"1": "Aspirin"},
+            eintrag=eintrag,
+            medikament="Aspirin",
+            fach="1",
+            tag="Mo",
+            zeit="08:00",
+            anzahl=999,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(eintrag["anzahl"], 1, "darf bei ungültiger Eingabe nicht verändert werden")
 
 
 if __name__ == "__main__":

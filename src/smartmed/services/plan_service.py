@@ -83,6 +83,25 @@ def plan_entry_sort_key(eintrag):
     return (1, f"{tag_index:02d}", zeit)
 
 
+ANZAHL_MIN = 1
+ANZAHL_MAX = 5
+
+
+def _validiere_anzahl(anzahl):
+    """Prüft die Stückzahl gegen die zulässige Spanne (Lastenheft: bis 5
+    Tabletten pro Silo). Gibt bei Fehler einen Meldungstext zurück, sonst None.
+    """
+    try:
+        anzahl_int = int(anzahl)
+    except (TypeError, ValueError):
+        return 'Anzahl muss eine ganze Zahl sein.'
+
+    if anzahl_int < ANZAHL_MIN or anzahl_int > ANZAHL_MAX:
+        return f'Anzahl muss zwischen {ANZAHL_MIN} und {ANZAHL_MAX} liegen.'
+
+    return None
+
+
 def create_plan_entry(
     *,
     plan_eintraege,
@@ -97,6 +116,10 @@ def create_plan_entry(
     bis_datum=None,
 ):
     """Neuen Plan-Eintrag anlegen, falls das Fach dazu passt."""
+    anzahl_fehler = _validiere_anzahl(anzahl)
+    if anzahl_fehler:
+        return {'ok': False, 'message': anzahl_fehler}
+
     vorhandenes_med = fach_medikamente.get(fach)
 
     if vorhandenes_med is None:
@@ -151,6 +174,10 @@ def update_plan_entry(
     bis_datum=None,
 ):
     """Bestehenden Plan-Eintrag aktualisieren."""
+    anzahl_fehler = _validiere_anzahl(anzahl)
+    if anzahl_fehler:
+        return {'ok': False, 'message': anzahl_fehler}
+
     vorhandenes_med = fach_medikamente.get(fach)
 
     if (
