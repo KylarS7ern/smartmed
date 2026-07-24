@@ -40,6 +40,33 @@ def verify_user_password(users, username, password_input):
     }
 
 
+def delete_user_result(*, users, username, current_user):
+    """Validiert und bereitet das Löschen eines Benutzers vor.
+
+    Löscht hier noch nichts selbst - der Aufrufer wendet das Ergebnis an
+    (damit z.B. app.current_user korrekt zurückgesetzt werden kann, bevor
+    gespeichert wird).
+    """
+    if username not in users:
+        return {
+            'ok': False,
+            'message': f'Benutzer "{username}" existiert nicht.',
+        }
+
+    if len(users) <= 1:
+        return {
+            'ok': False,
+            'message': 'Der letzte verbleibende Benutzer kann nicht gelöscht werden.',
+        }
+
+    return {
+        'ok': True,
+        'username': username,
+        'clears_current_user': username == current_user,
+        'message': f'Benutzer "{username}" wurde gelöscht.',
+    }
+
+
 def create_user_result(*, users, username_text, password_text, settings):
     """Validiert die Eingaben und bereitet einen neuen Benutzer vor."""
     username = (username_text or '').strip()

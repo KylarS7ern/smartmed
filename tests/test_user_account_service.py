@@ -2,6 +2,7 @@ import unittest
 
 from smartmed.services.user_account_service import (
     create_user_result,
+    delete_user_result,
     user_requires_password,
     verify_user_password,
 )
@@ -70,6 +71,38 @@ class UserAccountServiceTests(unittest.TestCase):
         verify_result = verify_user_password(users, "Anna", "falsch")
 
         self.assertFalse(verify_result["ok"])
+
+
+    def test_delete_user_result_succeeds_for_non_last_user(self):
+        users = {"Anna": {}, "Bert": {}}
+
+        result = delete_user_result(users=users, username="Bert", current_user="Anna")
+
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["clears_current_user"])
+
+    def test_delete_user_result_flags_deleting_the_current_user(self):
+        users = {"Anna": {}, "Bert": {}}
+
+        result = delete_user_result(users=users, username="Anna", current_user="Anna")
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["clears_current_user"])
+
+    def test_delete_user_result_rejects_last_remaining_user(self):
+        users = {"Anna": {}}
+
+        result = delete_user_result(users=users, username="Anna", current_user="Anna")
+
+        self.assertFalse(result["ok"])
+        self.assertIn("letzte", result["message"].lower())
+
+    def test_delete_user_result_rejects_unknown_username(self):
+        users = {"Anna": {}, "Bert": {}}
+
+        result = delete_user_result(users=users, username="Carla", current_user="Anna")
+
+        self.assertFalse(result["ok"])
 
 
 if __name__ == "__main__":
