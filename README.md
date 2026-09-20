@@ -1,189 +1,242 @@
 # SmartMediSpender
 
-SmartMediSpender ist die Raspberry-Pi-Software für meinen Diplomarbeits-Prototypen zur automatischen Medikamentenausgabe.
+**Prototyp eines automatischen Medikamentenspenders für die Heimanwendung**
+Diplomarbeit an der Höheren Fachschule für Medizintechnik Sarnen (HFMTS), 2026 – Samuel Weber
 
-Die Anwendung läuft auf einem Raspberry Pi mit Touchscreen und wurde mit Python und Kivy umgesetzt.
+Der SmartMediSpender gibt Tabletten aus drei Silos zum geplanten Zeitpunkt aus, verlangt am Gerät eine Bestätigung der Einnahme und alarmiert Angehörige oder den Arzt per E-Mail oder Telegram, wenn die Bestätigung ausbleibt.
 
-## Projektziel
+Dieses Repository enthält die Gerätesoftware für den Raspberry Pi (Python/Kivy) und die Firmware für den Arduino, der die Motoren ansteuert.
 
-Ziel ist eine saubere, wartbare und erweiterbare Finalsoftware für einen Medikamentenspender mit:
+> [!WARNING]
+> Der SmartMediSpender ist ein Ausbildungsprototyp und **kein zugelassenes Medizinprodukt**. Er ist nicht für den Einsatz mit echten Medikamenten oder echten Patientendaten vorgesehen.
 
-- Touch-Bedienung direkt am Gerät
-- Benutzerverwaltung
-- Einnahmeplan
-- Ereignis- und Einnahmelogs
-- Alarm- und Benachrichtigungslogik
-- Anbindung an Arduino / Hardware für die tatsächliche Tablettenausgabe
+---
 
-## Architektur
+## Funktionen
 
-- Die gesamte Projektstruktur liegt unter `src/smartmed/`, sauber nach Verantwortlichkeit aufgeteilt (`services/`, `ui/`, `hardware/`, `models/`)
-- Die App wird über `python -m smartmed.main` gestartet
-- Die App-Klasse `SmartMedGUI` (`src/smartmed/app.py`) ist ein dünner Orchestrator: sie hält den App-Zustand und verdrahtet Kivy-Callbacks (Timer, Touch-Events) mit der eigentlichen Geschäftslogik in `services/`
-- Laufzeitdaten liegen in `data/smartmed_plan.json`
+- **Benutzerverwaltung:** mehrere Profile mit optionalem Passwort und Patientendaten (Arzt, Kontaktpersonen)
+- **Einnahmeplan:** Einträge pro Fach mit Uhrzeit, Anzahl (1–5 Tabletten) und Wiederholung (täglich, wöchentlich, einmalig), optional mit Enddatum
+- **Automatische Ausgabe:** Die App prüft alle 10 Sekunden, ob ein Eintrag fällig ist, und schickt den Ausgabebefehl an den Arduino
+- **Einnahmebestätigung:** Popup am Display, das die Einnahme bestätigen lässt
+- **Alarmierung:** Nach Ablauf der Alarmfrist (Standard 30 Minuten) Alarm-Popup und Nachricht per E-Mail und/oder Telegram. Wird die Einnahme später doch bestätigt, geht eine zweite Nachricht raus
+- **Ereignisprotokoll:** Ausgaben, Bestätigungen, Alarme und Fehler, 30 Tage rollierend, Export als Datei oder per E-Mail
+- **Admin-PIN:** schützt Einstellungen sowie das Löschen und Zurücksetzen von Benutzern
+- **Hardware-Test:** Probeausgabe pro Fach direkt aus den Einstellungen
+- **Datensicherung:** Export und Wiederherstellung aller Daten
+- **Autostart:** startet nach dem Einschalten automatisch und nach einem Absturz selbständig neu
+- **Mock-Modus:** Entwicklung und Tests ohne angeschlossene Hardware
 
-## Projektstruktur
+## Hardware
 
-    smartmed/
-    ├─ data/
-    ├─ scripts/
-    ├─ src/
-    │  └─ smartmed/
-    │     ├─ app.py          # App-Klasse SmartMedGUI + create_app()
-    │     ├─ main.py         # Einstiegspunkt (python -m smartmed.main)
-    │     ├─ config.py
-    │     ├─ models/
-    │     ├─ services/       # gesamte Geschäftslogik
-    │     ├─ hardware/       # Arduino-Transport (real + Mock)
-    │     └─ ui/             # Screens, Popups, Theme, Widgets
-    ├─ tests/
-    ├─ pyproject.toml
-    ├─ README.md
+| Komponente | Verwendung |
+|---|---|
+| Raspberry Pi 4 | Oberfläche, Einnahmeplan, Protokoll, Alarmierung |
+| Raspberry Pi Touch Display 2 (720 × 1280, Hochformat) | Bedienung am Gerät |
+| Arduino Leonardo | Ansteuerung der Motoren |
+| 3 × DRV8825 | Motortreiber, 1/32-Mikroschritt |
+| 3 × NEMA17-Schrittmotor | Antrieb der Dosierräder, 90° pro Ausgabe |
+| 12-V-Netzteil (120 W) + Buck-Converter 12 V → 5 V | gemeinsame Stromversorgung |
+| Gehäuse, Silos, Dosierräder | eigene Konstruktion (SolidWorks), 3D-gedruckt aus ABS |
 
-## Voraussetzungen
+```mermaid
+flowchart LR
+    D["Touch-Display"] <--> P["Raspberry Pi 4<br/>Python / Kivy"]
+    P -- "USB seriell<br/>PING / DISPENSE" --> A["Arduino Leonardo"]
+    A --> T["3 × DRV8825"] --> M["3 × NEMA17<br/>Dosierräder"]
+    P -- "E-Mail / Telegram" --> K["Angehörige / Arzt"]
+    N["12-V-Netzteil"] --> T
+    N --> B["Buck-Converter 5 V"] --> P
+```
 
-- Raspberry Pi
-- Python 3.13
-- virtuelle Umgebung `.venv`
-- Kivy 2.3.1
-- requests 2.33.0
+## Software-Architektur
 
-## Projekt lokal auf dem Raspberry Pi starten
+Die Software ist in klar getrennte Schichten aufgebaut:
 
-### 1. Ins Projekt wechseln
+- **`ui/`** – Kivy-Screens, Popups und Widgets. Nur Darstellung und Bedienung.
+- **`services/`** – die gesamte Geschäftslogik (Plan, Fälligkeit, Ausgabe, Alarmierung, Protokoll, Benutzer, Speicherung). Sie kennt Kivy nicht und lässt sich deshalb ohne Oberfläche testen.
+- **`hardware/`** – serielle Verbindung zum Arduino, mit einem Mock-Transport gleicher Schnittstelle für die Entwicklung ohne Hardware.
+- **`app.py`** – die App-Klasse `SmartMedGUI` als dünner Orchestrator: hält den Zustand und verbindet Timer und Touch-Events mit den Services.
 
-    cd <dein-projektordner>
+Die Python-Seite kennt die mechanische Kalibrierung bewusst nicht. Sie sendet nur „Fach und Anzahl“, wie weit sich der Motor dafür dreht, legt allein die Firmware fest.
 
-Der Ordner kann beliebig heissen/liegen (z.B. `~/smartmed` oder
-`~/projects/smartmed`) - alle Skripte ermitteln ihren Pfad automatisch
-relativ zu sich selbst.
+```
+smartmed/
+├─ firmware/arduino/smartmed_arduino/   # Arduino-Firmware (.ino)
+├─ scripts/                             # Start-, Autostart- und Testskripte
+├─ src/smartmed/
+│  ├─ app.py              # App-Klasse SmartMedGUI + create_app()
+│  ├─ main.py             # Einstiegspunkt (python -m smartmed.main)
+│  ├─ config.py           # Konfiguration, Display- und Kiosk-Einstellungen
+│  ├─ hardware/           # serielle Kommunikation, Protokoll, Mock
+│  ├─ models/             # Standardwerte der Datenstruktur
+│  ├─ services/           # Geschäftslogik
+│  └─ ui/                 # Screens, Popups, Theme, Widgets
+├─ tests/                 # Unittests der Services
+├─ data/                  # Laufzeitdaten (wird automatisch angelegt)
+├─ exports/               # Log-Exporte und Backups
+├─ .env.example
+└─ pyproject.toml
+```
 
-### 2. Virtuelle Umgebung aktivieren
+Umfang: rund 6000 Zeilen Python in 50 Dateien, rund 2000 Zeilen Tests in 18 Testdateien und 182 Zeilen Arduino-Firmware.
 
-    source .venv/bin/activate
+## Serielles Protokoll (Raspberry Pi ↔ Arduino)
 
-### 3. App starten
+Textbasierte Befehle über USB, 115200 Baud, jede Zeile endet mit `\n`.
 
-Empfohlener Startweg:
+| Befehl | Antwort bei Erfolg | Bedeutung |
+|---|---|---|
+| `PING` | `OK PONG` | Verbindung prüfen |
+| `DISPENSE <Fach> <Anzahl>` | `OK DISPENSE <Fach> <Anzahl>` | Fach 1–3 gibt die angegebene Anzahl aus |
 
-    ./scripts/run_pi.sh
+Im Fehlerfall antwortet der Arduino mit `ERR <Code>`: `UNKNOWN_COMMAND`, `INVALID_FORMAT`, `INVALID_SLOT`, `INVALID_COUNT`, `SLOT_NOT_ENABLED` oder `DISPENSE_FAILED`.
 
-Alternativ direkt:
+Eine Ausgabeeinheit entspricht 1600 Mikroschritten, also 90° bei 1/32-Mikroschritt. Die Kalibrierung pro Fach steht in `STEPS_PER_DISPENSE_UNIT` in der Firmware.
 
-    export PYTHONPATH=src
-    python -m smartmed.main
+## Installation auf dem Raspberry Pi
 
-## Lokale Entwicklung unter Windows / VS Code
+Voraussetzung: Raspberry Pi mit Raspberry Pi OS (Desktop), Python 3.13.
 
-Die App lässt sich auch ohne angeschlossenen Raspberry Pi / Arduino auf einem
-normalen Windows-Laptop starten und testen (z.B. um Änderungen vorab zu prüfen,
-bevor sie aufs Pi kommen).
+```bash
+git clone https://github.com/KylarS7ern/smartmed.git
+cd smartmed
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+cp .env.example .env      # Zugangsdaten für E-Mail/Telegram eintragen
+./scripts/run_pi.sh
+```
 
-### 1. Virtuelle Umgebung erstellen
+Der Projektordner kann beliebig heissen und liegen, alle Skripte ermitteln ihren Pfad selbst.
 
-    python -m venv .venv
-    .venv\Scripts\Activate.ps1
-    pip install -e .
+### Arduino-Firmware aufspielen
 
-### 2. `.env` für lokale Entwicklung anlegen
+1. `firmware/arduino/smartmed_arduino/smartmed_arduino.ino` in der Arduino IDE öffnen
+2. Board **Arduino Leonardo** wählen und hochladen
+3. Verbindung testen:
 
-    copy .env.example .env
+   ```bash
+   PYTHONPATH=src python scripts/test_arduino_serial.py
+   ```
 
-In der `.env` folgende zwei Werte setzen (Rest kann leer bleiben):
+   Das Skript sendet `PING` und löst eine Probeausgabe an Fach 1 aus.
 
-    SMARTMED_HARDWARE_MODE=mock
-    SMARTMED_KIOSK=0
+### Autostart einrichten
 
-- `SMARTMED_HARDWARE_MODE=mock` simuliert den Arduino (kein echtes Gerät nötig, PING/DISPENSE liefern plausible Antworten).
-- `SMARTMED_KIOSK=0` öffnet ein normales, verschiebbares/schliessbares Fenster statt des Vollbild-Kiosk-Modus vom echten Gerät.
+```bash
+./scripts/install_autostart.sh
+```
 
-Auf dem Pi bleibt `.env` wie bisher (bzw. beide Werte einfach weglassen = Standardverhalten unverändert: echte Hardware, Vollbild-Kiosk).
+Das legt einen Autostart-Eintrag unter `~/.config/autostart/` an. Nach dem nächsten Login startet die App über `scripts/run_pi_resilient.sh`. Dieses Skript wartet kurz, bis der Arduino am USB erkannt ist, und startet die App nach einem Absturz neu. Das Protokoll dazu liegt in `logs/autostart.log`.
 
-### 3. App starten
+Deaktivieren:
 
-    $env:PYTHONPATH = "src"
-    python -m smartmed.main
+```bash
+rm ~/.config/autostart/smartmed-autostart.desktop
+```
 
-Oder direkt in VS Code über **Run and Debug** → "SmartMed: App starten (lokal)" (siehe `.vscode/launch.json`).
+## Konfiguration (`.env`)
 
-### 4. Tests ausführen
+Zugangsdaten und Geräteeinstellungen stehen in der Datei `.env`, die nicht ins Repository gehört (steht in `.gitignore`). Vorlage: `.env.example`.
 
-    python -m unittest discover -s tests
+| Variable | Standard | Bedeutung |
+|---|---|---|
+| `SMARTMED_TELEGRAM_BOT_TOKEN` | – | Token des Telegram-Bots |
+| `SMARTMED_EMAIL_SMTP_SERVER` | `smtp.gmail.com` | SMTP-Server für E-Mail-Alarme |
+| `SMARTMED_EMAIL_SMTP_PORT` | `587` | SMTP-Port |
+| `SMARTMED_EMAIL_USERNAME` | – | Absenderadresse |
+| `SMARTMED_EMAIL_PASSWORT` | – | Passwort (bei Gmail ein App-Passwort) |
+| `SMARTMED_ARDUINO_PORT` | `/dev/ttyACM0` | serieller Port des Arduino |
+| `SMARTMED_ARDUINO_BAUDRATE` | `115200` | Baudrate |
+| `SMARTMED_ARDUINO_TIMEOUT` | `2.0` | Timeout in Sekunden für `PING` |
+| `SMARTMED_ARDUINO_DISPENSE_TIMEOUT_PER_UNIT` | `8.0` | Wartezeit pro Ausgabeeinheit in Sekunden |
+| `SMARTMED_HARDWARE_MODE` | `real` | `real` = Arduino, `mock` = simuliert |
+| `SMARTMED_KIOSK` | `1` | `1` = Vollbild am Gerät, `0` = normales Fenster |
 
-Oder in VS Code über den Test-Explorer (Test-Framework ist in `.vscode/settings.json` bereits auf `unittest` konfiguriert) bzw. die Debug-Konfiguration "SmartMed: Alle Tests ausführen".
+Die Empfänger der Alarme (E-Mail-Adresse, Telegram-Chat-ID) und die Alarmfrist werden direkt in der App unter den Alarm-Einstellungen festgelegt.
+
+## Entwicklung ohne Hardware (Windows / VS Code)
+
+Die App läuft auch auf einem normalen Laptop, ohne Raspberry Pi und Arduino.
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -e .
+copy .env.example .env
+```
+
+In der `.env` setzen:
+
+```
+SMARTMED_HARDWARE_MODE=mock
+SMARTMED_KIOSK=0
+```
+
+Starten:
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m smartmed.main
+```
+
+In VS Code geht es auch über **Run and Debug** → „SmartMed: App starten (lokal)“.
+
+## Tests
+
+```bash
+python -m unittest discover -s tests
+```
+
+Die Unittests prüfen die Services unabhängig von Oberfläche und Hardware, unter anderem Plan- und Fälligkeitslogik, Ausgabe, Alarmierung, Protokoll, Benutzerkonten und Datensicherung. In VS Code sind sie im Test-Explorer verfügbar.
+
+Ergebnisse der Tests am fertigen Prototyp:
+
+| Test | Ergebnis |
+|---|---|
+| Dosiertest (3 × 50 Ausgaben) | 146 von 150 korrekt (97.3 %) |
+| Zeitgenauigkeit (10 Ausgaben) | Abweichung 10 s, Toleranz ±1 min |
+| Bestätigung und Alarmierung | 22 von 22 Durchläufen wie erwartet |
+| Fehlerfälle (Arduino getrennt, Absturz, Stromausfall, kein Internet) | 4 von 4 wie erwartet |
 
 ## Datenablage
 
-Die aktive Datendatei ist:
+| Pfad | Inhalt |
+|---|---|
+| `data/smartmed_plan.json` | alle Laufzeitdaten: Benutzer, Pläne, Einstellungen, Protokoll |
+| `exports/` | Log-Exporte und Backups (`smartmed_backup_JJJJ-MM-TT_HH-MM-SS.json`) |
+| `logs/autostart.log` | Protokoll des Autostart-Skripts |
 
-    data/smartmed_plan.json
+Die Daten liegen lokal und unverschlüsselt auf dem Gerät. `data/` und `exports/` sind vom Repository ausgeschlossen.
 
-Diese Datei wird von der App beim Start geladen und beim Speichern aktualisiert.
+## Admin-PIN zurücksetzen
 
-## Admin-PIN zurücksetzen (falls vergessen)
+Es gibt bewusst keinen „PIN vergessen“-Knopf in der App, weil er den Schutz aushebeln würde. Ein Reset geht nur mit direktem Zugriff auf den Raspberry Pi:
 
-Der Admin-PIN schützt die drei Einstellungsbereiche (Patient/Alarm/Erweitert)
-sowie das Löschen/Zurücksetzen von Benutzern. Es gibt bewusst **keinen**
-Reset-Weg direkt in der App-Oberfläche - ein "PIN vergessen"-Knopf in der App
-selbst würde den Schutz aushebeln, den der PIN eigentlich bieten soll. Ein
-Reset ist nur mit direktem Zugriff auf den Pi (SSH oder Tastatur/Bildschirm
-am Gerät) möglich, was als Sicherheitsgrenze so beabsichtigt ist.
+1. App beenden
+2. `data/smartmed_plan.json` öffnen, z. B. mit `nano`
+3. Den Eintrag auf `"admin_pin": "",` setzen und speichern
+4. App neu starten und unter „Erweiterte Einstellungen“ einen neuen PIN setzen
 
-Vorgehen:
+## Bekannte Einschränkungen
 
-1. App beenden (bzw. `sudo systemctl stop` falls als Dienst eingerichtet,
-   ansonsten im Login-Screen "App beenden" oder das Fenster schliessen).
-2. Datei öffnen:
+- Es gibt keinen Sensor zur Kontrolle der Ausgabe. Leere oder doppelte Ausgaben und leere Silos werden nicht erkannt.
+- Eine Einnahme, die während eines Stromausfalls fällig wird, wird nach dem Neustart nicht nachgeholt und löst keinen Alarm aus.
+- Ist der Arduino getrennt, erscheint eine Fehlermeldung am Display, aber keine Nachricht an die Angehörigen.
+- Kein akustisches Signal.
+- Die Alarmfrist hat keine Obergrenze.
+- Alle drei Fächer verwenden denselben Kalibrierwert.
 
-       nano ~/<dein-projektordner>/data/smartmed_plan.json
+## Mögliche Weiterentwicklungen
 
-3. Die Zeile `"admin_pin": "..."` suchen und den Wert auf einen leeren
-   String setzen:
+- Lichtschranke im Trichter zur Zählung der Ausgaben, mit erneutem Versuch bei Fehlausgabe
+- Erkennung verpasster Einnahmen nach einem Neustart
+- Alarm auch bei Hardwarefehlern
+- Akustisches Signal zur Einnahmezeit
+- Silos und Dosierräder, die sich ohne Werkzeug entnehmen und reinigen lassen
 
-       "admin_pin": "",
+## Projektkontext
 
-   Speichern (`Strg+O`, Enter, `Strg+X`).
-4. App neu starten. Die Einstellungsbereiche sind jetzt ohne PIN
-   erreichbar - dort kann in "Erweiterte Einstellungen" sofort wieder ein
-   neuer PIN gesetzt werden.
+Die Software ist Teil der Diplomarbeit *„SmartMediSpender: Automatische Medikamentenausgabe“* zum dipl. Medizintechniker HF. Mechanik, Elektronik, Tests und Ergebnisse sind in der schriftlichen Arbeit vollständig dokumentiert.
 
-## Entwicklungsansatz
-
-Entwickelt wird aktuell direkt auf dem Raspberry Pi mit Visual Studio Code per Remote-SSH.
-
-Warum dieser Weg:
-
-- direktes Testen auf dem echten Touchscreen
-- echtes Verhalten von Kivy auf dem Zielgerät
-- spätere Hardware-Anbindung besser testbar
-- weniger Komplexität als Docker / Dev Container für diese Projektphase
-
-## Autostart auf dem Pi einrichten
-
-Damit die App direkt beim Einschalten des Pi erscheint (Raspberry Pi OS Desktop
-mit Autologin), gibt es einen XDG-Autostart-Eintrag.
-
-### Einmalig einrichten
-
-    cd <dein-projektordner>
-    ./scripts/install_autostart.sh
-
-Das erzeugt einen Autostart-Eintrag unter `~/.config/autostart/` (mit dem
-tatsächlichen Pfad zu diesem Projektordner) und macht die Start-Skripte
-ausführbar. Beim nächsten Neustart/Login startet die App automatisch über
-`scripts/run_pi_resilient.sh` (wartet kurz auf die USB/Serial-Enumeration und
-startet die App bei einem unerwarteten Absturz neu; Log dazu in
-`logs/autostart.log`).
-
-### Wieder deaktivieren
-
-    rm ~/.config/autostart/smartmed-autostart.desktop
-
-## Nächste technische Ziele
-
-- Tabletten-Erkennung per Sensor (Lichtschranke) inkl. Retry-Logik, sobald die Sensor-Hardware verbaut ist
-- Missed-Dose-Erkennung nach einem App-Neustart
-
-## Hinweise
-
-- `data/smartmed_plan.json` ist die aktuelle Quelle der Wahrheit für Laufzeitdaten
+Bei der Entwicklung wurden ChatGPT (OpenAI) und Claude (Anthropic) als Hilfsmittel eingesetzt. Der Code wurde vom Autor geprüft, angepasst und am Gerät getestet.
